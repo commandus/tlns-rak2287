@@ -32,7 +32,15 @@ cmake ..
 make
 ```
 
+
+
+```
+ls ~/git/rak_common_for_gateway/lora/rak2287/sx1302_hal/packet_forwarder/global_conf*
+./gateway-config2cpp
+./gateway-config2cpp global_conf.json.sx1250.EU868.USB > global_conf.json.sx1250.EU868.USB.cpp
+```
+
 Dependencies:
 
-- (https://github.com/commandus/libloragw])[https://github.com/commandus/libloragw.git]
-- (https://github.com/RAKWireless/rak_common_for_gateway])[https://github.com/RAKWireless/rak_common_for_gateway.git]
+- (https://github.com/commandus/libloragw)[https://github.com/commandus/libloragw.git]
+- (https://github.com/RAKWireless/rak_common_for_gateway)[https://github.com/RAKWireless/rak_common_for_gateway.git]
