@@ -2,11 +2,12 @@
 #define LORAWAN_GATEWAY_LISTENER_H_ 1
 
 #include <vector>
-#include <mutex>
 #include <functional>
+#include <mutex>
 
 #include "gateway-settings.h"
 #include "log-intf.h"
+#include "packet-forwarder/loragw_hal.h"
 
 #define MEASUREMENT_COUNT_SIZE 23
 
@@ -16,75 +17,31 @@
 // 2- Do not send beacons
 #define FLAG_GATEWAY_LISTENER_NO_BEACON 2
 
-class LGWStatus {
-public:
-    uint32_t inst_tstamp;     ///< SX1302 counter (INST)
-    uint32_t trig_tstamp;     ///< SX1302 counter (PPS)
-    float temperature;        ///< Concentrator temperature
-};
-
-class TxPacket {
-public:
-    struct lgw_pkt_tx_s pkt;
-    TxPacket();
-};
-
 class LoraGatewayListener {
 private:
     int logVerbosity;
-
+    LogIntf *onLog;
     std::function<void(
         const LoraGatewayListener *listener,
-        const SEMTECH_PROTOCOL_METADATA *metadata,
-        const std::string &payload
+        lgw_pkt_rx_s *packet
     )> onUpstream;
+    struct jit_queue_s jit_queue[LGW_RF_CHAIN_NB];      ///< Just In Time TX scheduling for each radio channel
+    double xtal_correct;                                ///< XTAL frequency correction coefficient. XTAL(crystal) in timing refers to a quartz crystal.
+    int state;                                          ///< set to 2 to stop all threads. 0- stopped, 1- running, 2- request to stop
+    LorawanGatewaySettings *config;
+    std::mutex mutexLgw;                                 ///< control access to the concentrator
 
-    std::function<void(
-        const LoraGatewayListener *listener,
-        const uint32_t frequency,
-        const uint16_t results[LGW_SPECTRAL_SCAN_RESULT_SIZE]
-    )> onSpectralScan;
-
-    std::function<void(
-        const LoraGatewayListener *listener,
-        bool gracefullyStopped
-    )> onStop;
-
-    // control access
-    std::mutex mLGW;                         ///< control access to the concentrator
-    std::mutex mReportSpectralScan;          ///< control access to spectral scan report
-    mutable std::mutex mLog;                 ///< control access to log facility
-    std::mutex mXTALcorrection;              ///< control access to the XTAL correction
-
-    struct jit_queue_s jit_queue[LGW_RF_CHAIN_NB];  ///< Just In Time TX scheduling for each radio channel
-    bool xtal_correct_ok;            ///< set true when XTAL correction is stable enough
-    double xtal_correct;             ///< XTAL frequency correction coefficient. XTAL(crystal) in timing refers to a quartz crystal.
-
-    // threads
-    void upstreamRunner();              // receive Lora packets from end-device(s)
-    void jitRunner();                   // transmit from JIT queue
-    void spectralScanRunner();
-
-    bool getTxGainLutIndex(uint8_t rf_chain, int8_t rf_power, uint8_t * lut_index);
-protected:
+    int doUpstream(lgw_pkt_rx_s *packets, int count);
+    void doJitDownstream();
+    bool validateMetadata(lgw_pkt_rx_s *p) const;
+    void upstreamDownstreamLoop();                    ///< receive Lora packets from end-device(s)
+    bool getTxGainLutIndex(uint8_t rf_chain, int8_t rf_power, uint8_t * lut_index) const;
     // Apply config
     int setup();
 public:
-    // thread control
-    bool stopRequest;               ///< set to true to stop all threads
-    // thread finish indicators
-    bool upstreamThreadRunning;
-    bool jitThreadRunning;
-    bool spectralScanThreadRunning;
-
-    int lastLgwCode;
-    LorawanGatewaySettings *config;
-    int flags;
-
-    uint64_t eui;        ///< Gateway EUI
+    uint64_t gatewayId;        ///< Gateway EUI
 
     LoraGatewayListener();
-    LoraGatewayListener(LorawanGatewaySettings *cfg);
     ~LoraGatewayListener();
 
     void log(
@@ -93,46 +50,33 @@ public:
         const std::string &message
     ) const;
 
-    /**
-        LGW library version.
-        Calls lgw_version_info();
-    */
+    // library version
     std::string version();
     // SX1302 Status
-    bool getStatus(LGWStatus &status);
-    int start();
-    int stop(int waitSeconds);
-    bool isRunning() const;
-    bool isStopped() const;
+    float devTemperature();        ///< Concentrator temperature
+    uint32_t devCounterInst();     ///< SX1302 counter (INST)
+    uint32_t devCounterTrig();     ///< SX1302 counter (PPS)
+    int run();
+    void stop();
 
-
-    void setOnSpectralScan(
-        std::function<void(
-            const LoraGatewayListener *listener,
-            const uint32_t frequency,
-            const uint16_t results[LGW_SPECTRAL_SCAN_RESULT_SIZE]
-        )> value
+    void setConfig(
+        LorawanGatewaySettings *config
     );
-    void setOnLog(LogIntf *value);
+
     void setOnUpstream(
         std::function<void(
             const LoraGatewayListener *listener,
-            const SEMTECH_PROTOCOL_METADATA *metadata,
-            const std::string &payload
+            lgw_pkt_rx_s *packet
         )> value
     );
-    void setOnStop(
-        std::function<void(
-            const LoraGatewayListener *listener,
-            bool gracefullyStopped
-        )> value
+    void setOnLog(
+        LogIntf *value,
+        int level
     );
-    void setLogVerbosity(int level);
-    int enqueueTxPacket(TxPacket &tx);
+    int enqueueTxPacket(
+        struct lgw_pkt_tx_s &pkt
+    );
 
-    std::string toString() const;
-
-    LogIntf *onLog;
 };
 
 #endif

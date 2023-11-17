@@ -97,6 +97,8 @@ static LoraGatewayListener *listener;
 
 static void stop()
 {
+    if (listener)
+        listener->stop();
 }
 
 static LibLoragwHelper libLoragwHelper;
@@ -111,36 +113,35 @@ static void done()
 
 class StdErrLog: public LogIntf {
 public:
-    void onConnected(bool connected) override
+    void onStarted(
+        void *env,
+        uint64_t gatewayId,
+        const std::string &regionName
+    ) override
     {
-
+        std::cout << "gateway: " << std::hex << gatewayId << ", region: " << regionName << std::endl;
+        if (env) {
+            LoraGatewayListener* l = (LoraGatewayListener*) env;
+            std::cerr << "Temperature: " << l->devTemperature()
+              << ", inst count: " << l->devCounterInst()
+              << ", trig count: " << l->devCounterTrig()
+              << std::endl;
+        }
     }
 
-    void onDisconnected() override
+    void onFinished(
+        void *env,
+        const std::string &message
+    ) override
     {
-
-    }
-
-    void onStarted(uint64_t gatewayId, const std::string &regionName, size_t regionIndex) override
-    {
-        std::cout << "gateway: " << std::hex << gatewayId
-            << ", region: " << regionName << std::endl;
-    }
-
-    void onFinished(const std::string &message) override
-    {
-
-    }
-
-    void onReceive(Payload &value) override
-    {
-        std::cerr << hexString(value.payload) << std::endl;
-    }
-
-    void onValue(Payload &value) override
-    {
-        // TODO send to another program or service
-        std::cout << hexString(value.payload) << std::endl;
+        std::cout << "done " << message << std::endl;
+        if (env) {
+            LoraGatewayListener* l = (LoraGatewayListener*) env;
+            std::cerr << "Temperature: " << l->devTemperature()
+                << ", inst count: " << l->devCounterInst()
+                << ", trig count: " << l->devCounterTrig()
+                << std::endl;
+        }
     }
 
     void onInfo(
@@ -170,24 +171,6 @@ public:
         if (level == LOG_ALERT) {
             stop();
         }
-    }
-
-    // not used
-    int identityGet(DEVICEID& deviceid, DEVADDR& addr)
-    {
-        return 0;
-    }
-
-    // not used
-    int identityGetNetworkIdentity(NETWORKIDENTITY &retVal, const DEVEUI &eui)
-    {
-        return 0;
-    }
-
-    // not used
-    size_t identitySize()
-    {
-        return 0;
     }
 };
 
@@ -345,8 +328,7 @@ static void run()
 {
     setSignalHandler();
 
-    if (listener->onLog)
-        listener->onLog->onInfo(listener, LOG_DEBUG, LOG_MAIN_FUNC, CODE_OK, MSG_LISTENER_RUN);
+    listener->log(LOG_DEBUG, CODE_OK, MSG_LISTENER_RUN);
 
     libLoragwHelper.bind(&errLog, new PosixLibLoragwOpenClose(localConfig.devicePath));
     if (!libLoragwHelper.onOpenClose)
@@ -358,17 +340,13 @@ static void run()
     if (!localConfig.enableBeacon)
         flags |= FLAG_GATEWAY_LISTENER_NO_BEACON;
 
-    listener->config = localConfig.gwSettings;
-    int r = listener->start();
-    if (r && listener->onLog) {
+    listener->setConfig(localConfig.gwSettings);
+    int r = listener->run();
+    if (r) {
         std::stringstream ss;
         ss << ERR_MESSAGE << r << ": " << strerror_lorawan_ns(r) << std::endl;
-        listener->onLog->onInfo(listener, LOG_ERR, LOG_MAIN_FUNC, r, ss.str());
+        listener->log(LOG_INFO, r, ss.str());
     }
-
-    listener->start();
-    std::string s;
-    std::getline(std::cin, s);
 }
 
 static void init()
@@ -388,21 +366,10 @@ static void init()
 
     // signal is not required in USB listener
     // listener->setSysSignalPtr(&lastSysSignal);
-    listener->onLog = &errLog;
-    listener->setLogVerbosity(localConfig.verbosity);
-    listener->setOnStop(
-        [] (const LoraGatewayListener *lsnr,
-            bool gracefullyStopped
-        ) {
-            if (!gracefullyStopped) {
-                // wait until all threads done
-                int seconds2wait = 0;
-                while(!lsnr->isStopped() && seconds2wait < 60) {
-                    std::cerr << ".";
-                    sleep(1);
-                    seconds2wait++;
-                }
-            }
+    listener->setOnLog(&errLog, localConfig.verbosity);
+    listener->setOnUpstream(
+        [](const LoraGatewayListener *listener, struct lgw_pkt_rx_s *packet) {
+            std::cout << hexString(std::string((char *) &packet->payload[0], packet->size)) << std::endl;
         }
     );
 }

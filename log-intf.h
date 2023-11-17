@@ -23,19 +23,8 @@ public:
         int errorCode,
         const std::string &message
     ) = 0;
-    virtual void onConnected(bool connected) = 0;
-    virtual void onDisconnected() = 0;
-    virtual void onStarted(uint64_t gatewayId, const std::string &regionName, size_t regionIndex) = 0;
-    virtual void onFinished(const std::string &message) = 0;
-    // raw (ciphered) message received
-    virtual void onReceive(Payload &value) = 0;
-    // after payload deciphered and plugin successfully processed payload
-    virtual void onValue(Payload &value) = 0;
-    // identity callbacks
-    virtual int identityGet(DEVICEID &retVal, DEVADDR &devAddr) = 0;
-    virtual int identityGetNetworkIdentity(NETWORKIDENTITY &retVal, const DEVEUI &eui) = 0;
-    // Entries count
-    virtual size_t identitySize() = 0;
+    virtual void onStarted(void *env, uint64_t gatewayId, const std::string &regionName) = 0;
+    virtual void onFinished(void *env, const std::string &message) = 0;
 };
 
 #endif

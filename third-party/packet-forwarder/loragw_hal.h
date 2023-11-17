@@ -537,7 +537,7 @@ int lgw_get_instcnt(uint32_t * inst_cnt_us);
 
 /**
 @brief Return the LoRa concentrator EUI
-@param eui pointer to receive eui
+@param eui pointer to receive gatewayId
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
 int lgw_get_eui(uint64_t * eui);
