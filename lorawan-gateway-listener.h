@@ -8,6 +8,7 @@
 #include "gateway-settings.h"
 #include "log-intf.h"
 #include "packet-forwarder/loragw_hal.h"
+#include "packet-forwarder/jitqueue.h"
 
 #define MEASUREMENT_COUNT_SIZE 23
 
@@ -53,9 +54,6 @@ public:
     // library version
     std::string version();
     // SX1302 Status
-    float devTemperature();        ///< Concentrator temperature
-    uint32_t devCounterInst();     ///< SX1302 counter (INST)
-    uint32_t devCounterTrig();     ///< SX1302 counter (PPS)
     int run();
     void stop();
 

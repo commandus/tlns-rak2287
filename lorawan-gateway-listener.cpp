@@ -432,42 +432,6 @@ std::string LoraGatewayListener::version()
     return r;
 }
 
-///< SX1302 Concentrator temperature
-float LoraGatewayListener::devTemperature()
-{
-    float r;
-    mutexLgw.lock();
-    int lastLgwCode = lgw_get_temperature(&r);
-    mutexLgw.unlock();
-    if (lastLgwCode)
-        r = INVALID_TEMPERATURE_C;
-    return r;
-}
-
-///< SX1302 counter (INST)
-uint32_t LoraGatewayListener::devCounterInst()
-{
-    uint32_t r;
-    mutexLgw.lock();
-    int lastLgwCode = lgw_get_instcnt(&r);
-    mutexLgw.unlock();
-    if (lastLgwCode)
-        r = 0;
-    return r;
-}
-
-///< SX1302 counter (PPS)
-uint32_t LoraGatewayListener::devCounterTrig()
-{
-    uint32_t r;
-    mutexLgw.lock();
-    int lastLgwCode = lgw_get_instcnt(&r);
-    mutexLgw.unlock();
-    if (lastLgwCode)
-        r = 0;
-    return r;
-}
-
 int LoraGatewayListener::run()
 {
     if (!config)

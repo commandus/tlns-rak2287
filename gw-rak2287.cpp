@@ -7,7 +7,6 @@
 #ifdef _MSC_VER
 #else
 #include <execinfo.h>
-#include <netinet/in.h>
 
 #endif
 
@@ -22,6 +21,7 @@
 // generated gateway regional settings source code
 #include "config/gateway_usb_conf.h"
 #include "lorawan-gateway-listener.h"
+#include "scheduler.h"
 
 static LorawanGatewaySettings* findLorawanGatewaySettingsByRegionName(
     const char *name
@@ -120,13 +120,6 @@ public:
     ) override
     {
         std::cout << "gateway: " << std::hex << gatewayId << ", region: " << regionName << std::endl;
-        if (env) {
-            LoraGatewayListener* l = (LoraGatewayListener*) env;
-            std::cerr << "Temperature: " << l->devTemperature()
-              << ", inst count: " << l->devCounterInst()
-              << ", trig count: " << l->devCounterTrig()
-              << std::endl;
-        }
     }
 
     void onFinished(
@@ -135,13 +128,6 @@ public:
     ) override
     {
         std::cout << "done " << message << std::endl;
-        if (env) {
-            LoraGatewayListener* l = (LoraGatewayListener*) env;
-            std::cerr << "Temperature: " << l->devTemperature()
-                << ", inst count: " << l->devCounterInst()
-                << ", trig count: " << l->devCounterTrig()
-                << std::endl;
-        }
     }
 
     void onInfo(
@@ -374,10 +360,21 @@ static void init()
     );
 }
 
+class JitScheduler : public Scheduler {
+public:
+    std::size_t itemSize() override
+    {
+        return sizeof(struct lgw_pkt_tx_s);
+    };
+};
+
+JitScheduler sh;
+
 int main(
 	int argc,
 	char *argv[])
 {
+
     if (parseCmd(&localConfig, argc, argv) != 0)
         exit(ERR_CODE_COMMAND_LINE);
     init();

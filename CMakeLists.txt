@@ -26,10 +26,9 @@ find_library(LIBLORAGW NAMES loragw HINTS
 set(SRC_MAIN
 	gw-rak2287.cpp
     lorawan-gateway-listener.cpp
-	lorawan-date.cpp
-	lorawan-error.cpp
-	lorawan-msg.cpp
-	lorawan-string.cpp lorawan-conv.cpp lorawan-types.cpp
+	scheduler.cpp schedule-concentrator.cpp
+	lorawan-error.cpp lorawan-msg.cpp
+	lorawan-date.cpp lorawan-string.cpp lorawan-conv.cpp lorawan-types.cpp
 	gw/libloragw-helper.cpp
 	gw/subst-call-c.cpp
 	third-party/strptime.cpp
