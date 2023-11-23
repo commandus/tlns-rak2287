@@ -26,11 +26,11 @@ find_library(LIBLORAGW NAMES loragw HINTS
 set(SRC_MAIN
 	gw-rak2287.cpp
     lorawan-gateway-listener.cpp
-	scheduler.cpp schedule-concentrator.cpp
+	scheduler.cpp schedule-item-concentrator.cpp
 	lorawan-error.cpp lorawan-msg.cpp
 	lorawan-date.cpp lorawan-string.cpp lorawan-conv.cpp lorawan-types.cpp
-	gw/libloragw-helper.cpp
-	gw/subst-call-c.cpp
+	third-party/packet-forwarder/subst-call-c.cpp
+	third-party/packet-forwarder/libloragw-helper.cpp
 	third-party/strptime.cpp
 	third-party/argtable3/argtable3.c
 )

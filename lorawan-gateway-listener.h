@@ -8,7 +8,7 @@
 #include "gateway-settings.h"
 #include "log-intf.h"
 #include "packet-forwarder/loragw_hal.h"
-#include "packet-forwarder/jitqueue.h"
+#include "scheduler.h"
 
 #define MEASUREMENT_COUNT_SIZE 23
 
@@ -26,7 +26,7 @@ private:
         const LoraGatewayListener *listener,
         lgw_pkt_rx_s *packet
     )> onUpstream;
-    struct jit_queue_s jit_queue[LGW_RF_CHAIN_NB];      ///< Just In Time TX scheduling for each radio channel
+    Scheduler* scheduler;
     double xtal_correct;                                ///< XTAL frequency correction coefficient. XTAL(crystal) in timing refers to a quartz crystal.
     int state;                                          ///< set to 2 to stop all threads. 0- stopped, 1- running, 2- request to stop
     LorawanGatewaySettings *config;
@@ -39,10 +39,21 @@ private:
     bool getTxGainLutIndex(uint8_t rf_chain, int8_t rf_power, uint8_t * lut_index) const;
     // Apply config
     int setup();
+    /**
+     * Invalidate TX packet
+     * @param value packet to validate
+     * @param downlinkClass return LoRaWAN class
+     * @return 0- success
+     */
+    int invalidateTxPacket(
+        lgw_pkt_tx_s &value,
+        enum scheduler_pkt_type_e &downlinkClass
+    );
+
 public:
     uint64_t gatewayId;        ///< Gateway EUI
 
-    LoraGatewayListener();
+    explicit LoraGatewayListener(Scheduler *scheduler);
     ~LoraGatewayListener();
 
     void log(

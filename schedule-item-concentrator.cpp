@@ -1,41 +1,39 @@
 #include <cstring>
 #include <cmath>
 
-#include "schedule-concentrator.h"
+#include "schedule-item-concentrator.h"
 
-ScheduleConcentrator::ScheduleConcentrator()
-    : item{}
+ScheduleItemConcentrator::ScheduleItemConcentrator()
+    : ScheduleItem()
 {
+    memset(&item, 0, sizeof(struct lgw_pkt_tx_s));
 }
 
-ScheduleConcentrator::ScheduleConcentrator(
+ScheduleItemConcentrator::ScheduleItemConcentrator(
     const struct lgw_pkt_tx_s& value
 )
 {
     memmove(&item, &value, sizeof(struct lgw_pkt_tx_s));
 }
 
-void ScheduleConcentrator::getItem(
-        void *value
-)
+void *ScheduleItemConcentrator::get()
 {
-    if (value)
-        memmove(value, &item, sizeof(struct lgw_pkt_tx_s));
+    return &item;
 }
 
-void ScheduleConcentrator::setItem(
+void ScheduleItemConcentrator::setItem(
     const void* value
 )
 {
-    memmove(&item, &value, sizeof(struct lgw_pkt_tx_s));
+    memmove(&item, value, sizeof(struct lgw_pkt_tx_s));
 }
 
-uint32_t ScheduleConcentrator::getCountUs() const
+uint32_t ScheduleItemConcentrator::getCountUs() const
 {
     return item.count_us;
 }
 
-void ScheduleConcentrator::setCountUs(
+void ScheduleItemConcentrator::setCountUs(
     uint32_t value
 )
 {
@@ -125,12 +123,12 @@ static uint32_t lgwTimeOnAir(
     return toa_ms;
 }
 
-uint32_t ScheduleConcentrator::getTimeOnAir() const
+uint32_t ScheduleItemConcentrator::getTimeOnAir() const
 {
     return lgwTimeOnAir(&item);
 }
 
-void ScheduleConcentrator::setTxMode(
+void ScheduleItemConcentrator::setTxMode(
     uint8_t value
 )
 {

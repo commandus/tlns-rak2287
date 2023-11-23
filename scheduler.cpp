@@ -15,32 +15,42 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
 #include <cstdlib>     // qsort_r
-#include <cstring>     // memset, memcpy
+#include <utility>
 
-#include "scheduler.h"
+#define TX_START_DELAY                  1500    // microseconds
+#define TX_MARGIN_DELAY                 1000    // Packet overlap margin in microseconds
+#define TX_SCHEDULER_DELAY              40000   // Pre-delay to program packet for TX in microseconds
+#define TX_MAX_ADVANCE_DELAY            ((SCHEDULER_NUM_BEACON_IN_QUEUE + 1) * 128 * 1E6) // Maximum advance delay accepted for a TX packet, compared to current time
+#define BEACON_GUARD                    3000000 // Interval where no ping slot can be placed, to ensure beacon can be sent
+#define BEACON_RESERVED                 2120000 // Time on air of the beacon, with some margin
 
-#define TX_START_DELAY          1500    /* microseconds */
-#define TX_MARGIN_DELAY         1000    /* Packet overlap margin in microseconds */
-#define TX_SCHEDULER_DELAY            40000   /* Pre-delay to program packet for TX in microseconds */
-#define TX_MAX_ADVANCE_DELAY    ((SCHEDULER_NUM_BEACON_IN_QUEUE + 1) * 128 * 1E6) /* Maximum advance delay accepted for a TX packet, compared to current time */
-#define BEACON_GUARD            3000000 // Interval where no ping slot can be placed, to ensure beacon can be sent */
-#define BEACON_RESERVED         2120000 /* Time on air of the beacon, with some margin */
-
-#define SCHEDULER_QUEUE_MAX           32  // Maximum number of packets to be stored in JiT queue
-#define SCHEDULER_NUM_BEACON_IN_QUEUE 3   // Number of beacons to be loaded in JiT queue at any tim
+#define SCHEDULER_QUEUE_MAX             32  // Maximum number of packets to be stored in JiT queue
+#define SCHEDULER_NUM_BEACON_IN_QUEUE   3   // Number of beacons to be loaded in JiT queue at any tim
 
 #define DEF_COUNT   32
 
-Scheduler::Scheduler()
+ScheduleItem::ScheduleItem()
+    : pktType(SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_A), preDelay(0), postDelay(0)
+{
+}
+
+Scheduler::Scheduler(std::function<ScheduleItem*()> create)
     : count(0)
 {
+    onCreate = std::move(create);
     setSize(DEF_COUNT);
 }
 
-Scheduler::Scheduler(std::size_t sz)
+Scheduler::Scheduler(std::function<ScheduleItem*()> create, std::size_t sz)
     : count(0)
 {
+    onCreate = create;
     setSize(sz);
+}
+
+Scheduler::~Scheduler()
+{
+    setSize(0);
 }
 
 std::size_t Scheduler::size()
@@ -50,7 +60,16 @@ std::size_t Scheduler::size()
 
 void Scheduler::setSize(std::size_t size)
 {
-    // queue.resize(size);
+    auto sz = queue.size();
+    if (size < sz) {
+        for (auto i = size; i < sz; i++)
+            delete queue[i];
+    }
+    queue.resize(size);
+    if (size > sz) {
+        for (auto i = sz; i < size; i++)
+            queue[i] = onCreate();
+    }
 }
 
 bool Scheduler::isFull()
@@ -58,16 +77,18 @@ bool Scheduler::isFull()
     return count >= queue.size();
 }
 
-bool Scheduler::isEmpty()
+bool Scheduler::isEmpty() const
 {
     return count == 0;
 }
 
 void Scheduler::sortTime()
 {
-    std::qsort(queue.data(), queue.size(), itemSize(),
+    std::qsort(queue.data(), queue.size(), sizeof(ScheduleItem *),
         [](const void *a, const void *b) {
-            return (int) (((const ScheduleItem *)a)->getCountUs() - ((const ScheduleItem *)b)->getCountUs());
+            const ScheduleItem *aa = *(const ScheduleItem **) a;
+            return (int) (
+                (*(const ScheduleItem **) a)->getCountUs() - (*(const ScheduleItem **) b)->getCountUs());
         });
 }
 
@@ -91,8 +112,7 @@ static inline bool jit_collision_test(
 
 enum scheduler_error_e Scheduler::enqueue(
     uint32_t time_us,
-    ScheduleItem &item,
-    enum scheduler_pkt_type_e pktType
+    ScheduleItem &item
 )
 {
     int i = 0;
@@ -106,7 +126,7 @@ enum scheduler_error_e Scheduler::enqueue(
         return SCHEDULER_ERROR_FULL;
 
     // Compute packet pre/post delays depending on packet's type
-    switch (pktType) {
+    switch (item.pktType) {
         case SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_A:
         case SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_B:
         case SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_C:
@@ -123,7 +143,7 @@ enum scheduler_error_e Scheduler::enqueue(
     }
     // An immediate downlink becomes a timestamped downlink "ASAP"
     // Set the packet count_us to the first available slot
-    if (pktType == SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_C) {
+    if (item.pktType == SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_C) {
         // change tx_mode to timestamped
         item.setTxMode(TIMESTAMPED);
 
@@ -134,18 +154,18 @@ enum scheduler_error_e Scheduler::enqueue(
             // First, try if the ASAP time collides with an already enqueued downlink
             for (i = 0; i < count; i++) {
                 if (jit_collision_test(asap_count_us, packet_pre_delay, packet_post_delay,
-                    queue[i].getCountUs(), queue[i].preDelay, queue[i].postDelay)) {
+                    queue[i]->getCountUs(), queue[i]->preDelay, queue[i]->postDelay)) {
                     break;
                 }
             }
             if (i < count) {
                 // Search for the best slot then
                 for (i = 0; i < count; i++) {
-                    asap_count_us = queue[i].getCountUs() + queue[i].postDelay + packet_pre_delay + TX_SCHEDULER_DELAY + TX_MARGIN_DELAY;
+                    asap_count_us = queue[i]->getCountUs() + queue[i]->postDelay + packet_pre_delay + TX_SCHEDULER_DELAY + TX_MARGIN_DELAY;
                     if (i < count - 1) {
                         // Check if packet can be inserted between this index and the next one
                         if (jit_collision_test(asap_count_us, packet_pre_delay, packet_post_delay,
-                            queue[i + 1].getCountUs(), queue[i + 1].preDelay, queue[i + 1].postDelay))
+                            queue[i + 1]->getCountUs(), queue[i + 1]->preDelay, queue[i + 1]->postDelay))
                             continue;
                         else
                             break;
@@ -159,18 +179,18 @@ enum scheduler_error_e Scheduler::enqueue(
 
     // Check criteria_1: is it already too late to send this packet ?
     // The packet should arrive at least at (tmst - TX_START_DELAY) to be programmed into concentrator
-    // Note: - Also add some margin, to be checked how much is needed, if needed
-    if ((item.getCountUs() - time_us) <= (TX_START_DELAY + TX_MARGIN_DELAY + TX_SCHEDULER_DELAY))
+    // Also add some margin
+    if (((item.getCountUs() - time_us)) <= (TX_START_DELAY + TX_MARGIN_DELAY + TX_SCHEDULER_DELAY))
         return SCHEDULER_ERROR_TOO_LATE;
 
     // Check criteria_2: Does packet timestamp seem plausible compared to current time
     // We do not expect the server to program a downlink too early compared to current time
-    // Class A: downlink has to be sent in a 1s or 2s time window after RX
-    // Class B: downlink has to occur in a 128s time window
-    // Class C: no check needed, departure time has been calculated previously
-    // So let's define a safe delay above which we can say that the packet is out of bound: TX_MAX_ADVANCE_DELAY
-    if ((pktType == SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_A) || (pktType == SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_B)) {
-        if ((item.getCountUs() - time_us) > TX_MAX_ADVANCE_DELAY) {
+    // Class A: 1 or 2 seconds time window after RX
+    // Class B: 128 seconds time window
+    // Class C: no check needed
+    // t_packet > t_current + TX_MAX_ADVANCE_DELAY
+    if ((item.pktType == SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_A) || (item.pktType == SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_B)) {
+        if (((item.getCountUs() - time_us)) > TX_MAX_ADVANCE_DELAY) {
             return SCHEDULER_ERROR_TOO_EARLY;
         }
     }
@@ -180,16 +200,16 @@ enum scheduler_error_e Scheduler::enqueue(
     // Beacon guard can be ignored if we try to queue a Class A downlink
     for (i = 0; i < count; i++) {
         // We ignore Beacon Guard for Class A/C downlinks
-        if (((pktType == SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_A) || (pktType == SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_C))
-            && (queue[i].pktType == SCHEDULER_PKT_TYPE_BEACON))
+        if (((item.pktType == SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_A) || (item.pktType == SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_C))
+            && (queue[i]->pktType == SCHEDULER_PKT_TYPE_BEACON))
             target_pre_delay = TX_START_DELAY;
         else
-            target_pre_delay = queue[i].preDelay;
+            target_pre_delay = queue[i]->preDelay;
 
         // Check if there is a collision
         if (jit_collision_test(item.getCountUs(), packet_pre_delay, packet_post_delay,
-                               queue[i].getCountUs(), target_pre_delay, queue[i].postDelay)) {
-            switch (queue[i].pktType) {
+                               queue[i]->getCountUs(), target_pre_delay, queue[i]->postDelay)) {
+            switch (queue[i]->pktType) {
                 case SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_A:
                 case SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_B:
                 case SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_C:
@@ -207,10 +227,10 @@ enum scheduler_error_e Scheduler::enqueue(
 
     // Finally enqueue it
     // Insert packet at the end of the queue
-    queue[count].setItem(&item);
-    queue[count].preDelay = packet_pre_delay;
-    queue[count].postDelay = packet_post_delay;
-    queue[count].pktType = pktType;
+    queue[count]->pktType = item.pktType;
+    queue[count]->setItem(item.get());
+    queue[count]->preDelay = packet_pre_delay;
+    queue[count]->postDelay = packet_post_delay;
     count++;
     // Sort the queue in ascending order of packet timestamp
     sortTime();
@@ -219,7 +239,6 @@ enum scheduler_error_e Scheduler::enqueue(
 
 enum scheduler_error_e Scheduler::dequeue(
     ScheduleItem &retItem,
-    enum scheduler_pkt_type_e &retPktType,
     int index
 )
 {
@@ -228,8 +247,8 @@ enum scheduler_error_e Scheduler::dequeue(
     if (isEmpty())
         return SCHEDULER_ERROR_EMPTY;
     // Dequeue requested packet
-    queue[index].getItem(&retItem);
-    retPktType = queue[index].pktType;
+    retItem.setItem(queue[index]->get());
+    retItem.pktType = queue[index]->pktType;
     count--;
     // Replace dequeued packet with last packet of the queue */
     queue[index] = queue[count];
@@ -251,7 +270,7 @@ enum scheduler_error_e Scheduler::peek(
         // First check if that packet is outdated:
         // too much in advance, and was not rejected at enqueue time,
         // it means that we missed it for peeking, we need to drop it
-        if ((queue[i].getCountUs() - time_us) >= TX_MAX_ADVANCE_DELAY) {
+        if ((queue[i]->getCountUs() - time_us) >= TX_MAX_ADVANCE_DELAY) {
             // Drop the packet to avoid lock-up
             count--;
             // Replace dropped packet with last packet of the queue
@@ -265,16 +284,16 @@ enum scheduler_error_e Scheduler::peek(
 
         // Then look for highest priority packet to be sent
         if ((idx_highest_priority == -1)
-            || (((queue[i].getCountUs() - time_us) < (queue[idx_highest_priority].getCountUs() - time_us)))) {
+            || (((queue[i]->getCountUs() - time_us) < (queue[idx_highest_priority]->getCountUs() - time_us)))) {
             idx_highest_priority = i;
         }
     }
-
+    if (idx_highest_priority == -1)
+        return SCHEDULER_ERROR_EMPTY;
     // Peek criteria 1: look for a packet to be sent in next TX_SCHEDULER_DELAY ms timeframe
-    if ((queue[idx_highest_priority].getCountUs() - time_us) < TX_SCHEDULER_DELAY)
+    if ((queue[idx_highest_priority]->getCountUs() - time_us) < TX_SCHEDULER_DELAY)
         retIndex = idx_highest_priority;
     else
-        retIndex = -1;
-
+        return SCHEDULER_ERROR_TOO_EARLY;
     return SCHEDULER_ERROR_OK;
 }

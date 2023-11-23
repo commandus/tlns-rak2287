@@ -12,7 +12,7 @@
 
 #include "argtable3/argtable3.h"
 
-#include "gw/libloragw-helper.h"
+#include "packet-forwarder/libloragw-helper.h"
 #include "lorawan-error.h"
 #include "lorawan-msg.h"
 #include "lorawan-date.h"
@@ -22,6 +22,7 @@
 #include "config/gateway_usb_conf.h"
 #include "lorawan-gateway-listener.h"
 #include "scheduler.h"
+#include "schedule-item-concentrator.h"
 
 static LorawanGatewaySettings* findLorawanGatewaySettingsByRegionName(
     const char *name
@@ -344,7 +345,11 @@ static void init()
     }
     libLoragwHelper.bind(&errLog, nullptr);
 
-    listener = new LoraGatewayListener();
+    Scheduler sheduler([]() {
+        return new ScheduleItemConcentrator;
+    }, 32);
+
+    listener = new LoraGatewayListener(&sheduler);
     if (!listener) {
         std::cerr << ERR_MESSAGE << ERR_CODE_FAIL_IDENTITY_SERVICE << ": " << ERR_FAIL_IDENTITY_SERVICE << std::endl;
         exit(ERR_CODE_INSUFFICIENT_MEMORY);
@@ -360,21 +365,10 @@ static void init()
     );
 }
 
-class JitScheduler : public Scheduler {
-public:
-    std::size_t itemSize() override
-    {
-        return sizeof(struct lgw_pkt_tx_s);
-    };
-};
-
-JitScheduler sh;
-
 int main(
 	int argc,
 	char *argv[])
 {
-
     if (parseCmd(&localConfig, argc, argv) != 0)
         exit(ERR_CODE_COMMAND_LINE);
     init();

@@ -5,7 +5,7 @@
  * Lora gateway settings structure access method
  */
 #include <string>
-#include "gw/gateway-lora.h"
+#include "gateway-lora.h"
 
 class LorawanGatewaySettings {
 public:

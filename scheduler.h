@@ -18,6 +18,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include <vector>
 #include <cstdint>
+#include <functional>
 
 #include "packet-forwarder/loragw_hal.h"
 
@@ -52,38 +53,38 @@ public:
     enum scheduler_pkt_type_e pktType;   // Packet type: Downlink, Beacon...
     uint32_t preDelay;             // Amount of time before packet timestamp to be reserved
     uint32_t postDelay;            // Amount of time after packet timestamp to be reserved (time on air)
-    virtual void getItem(void *value) = 0;
+    virtual void* get() = 0;
     virtual void setItem(const void* value) = 0;
     virtual uint32_t getCountUs() const = 0;
     virtual void setCountUs(uint32_t value) = 0;
     virtual uint32_t getTimeOnAir() const = 0;
-    virtual void setTxMode(uint8_t value) = 0;        // select on what event/time the TX is triggered
-    /*
-    ScheduleItem() = default;
-    ScheduleItem(const ScheduleItem &value) = delete;
-    ScheduleItem(ScheduleItem &&value) = default;
-    ScheduleItem& operator=(const ScheduleItem&);
+    /**
+     * Set when to send
+     * @param value 0- IMMEDIATE, 1- TIMESTAMPED, 2- ON_GPS
      */
+    virtual void setTxMode(uint8_t value) = 0;        // select on what event/time the TX is triggered
+    ScheduleItem();
 };
 
 class Scheduler {
 private:
-    std::vector<ScheduleItem> queue;
+    std::function<ScheduleItem*()> onCreate;
+    std::vector<ScheduleItem*> queue;
     std::size_t count;                // Total number of packets in the queue (downlinks, beacons...)
     void reset();
     void sortTime();
 public:
-    Scheduler();
-    Scheduler(std::size_t size);
+    explicit Scheduler(std::function<ScheduleItem*()> create);
+    explicit Scheduler(std::function<ScheduleItem*()> create, std::size_t size);
+    virtual ~Scheduler();
     std::size_t size();
-    virtual std::size_t itemSize() = 0;
     void setSize(std::size_t size);
     bool isFull();
-    bool isEmpty();
+    bool isEmpty() const;
     // Return index of node containing a packet inline with given time
     enum scheduler_error_e peek(std::size_t &retIndex, uint32_t time_us);
-    enum scheduler_error_e enqueue(uint32_t time_us, ScheduleItem &item, enum scheduler_pkt_type_e pktType);
-    enum scheduler_error_e dequeue(ScheduleItem &retItem, enum scheduler_pkt_type_e &pktType, int index);
+    enum scheduler_error_e enqueue(uint32_t time_us, ScheduleItem &item);
+    enum scheduler_error_e dequeue(ScheduleItem &retItem, int index);
 };
 
 #endif

@@ -7,9 +7,10 @@
 #include "lorawan-gateway-listener.h"
 #include "lorawan-error.h"
 #include "lorawan-msg.h"
+#include "schedule-item-concentrator.h"
 
 // max number of packets per fetch/send cycle
-#define PACKETS_MAX_SIZE         255
+#define PACKETS_MAX_SIZE            255
 // ms waited when a fetch return no packets
 #define UPSTREAM_FETCH_DELAY_MS     10
 #define INVALID_TEMPERATURE_C       (-273.15)
@@ -268,27 +269,21 @@ bool LoraGatewayListener::getTxGainLutIndex(
     return true;
 }
 
-/**
- * Validate transmission packet in tx param, if packet is valid, enqueueTxPacket packet to be sent or send immediately
- * @param tx
- * @return
- */
-int LoraGatewayListener::enqueueTxPacket(
-    struct lgw_pkt_tx_s &pkt
+int LoraGatewayListener::invalidateTxPacket(
+    lgw_pkt_tx_s &pkt,
+    enum scheduler_pkt_type_e &downlinkClass
 )
 {
-    // determine packet type (class A, B or C)
-    enum jit_pkt_type_e downlinkClass;
     // and calculate appropriate time to send
     switch(pkt.tx_mode) {
         case IMMEDIATE:
             // TX procedure: send immediately
-            downlinkClass = JIT_PKT_TYPE_DOWNLINK_CLASS_C;
+            downlinkClass = SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_C;
             break;
         case TIMESTAMPED:
             // tx.pkt.count_us is time stamp
             // Concentrator timestamp is given, we consider it is a Class A downlink
-            downlinkClass = JIT_PKT_TYPE_DOWNLINK_CLASS_A;
+            downlinkClass = SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_C;
             break;
         case ON_GPS:
         {
@@ -343,7 +338,25 @@ int LoraGatewayListener::enqueueTxPacket(
         // this RF power is not supported, throw a warning, and use the closest lower power supported
         log(LOG_WARNING, ERR_CODE_LORA_GATEWAY_TX_UNSUPPORTED_POWER, ERR_LORA_GATEWAY_TX_UNSUPPORTED_POWER);
         pkt.rf_power = config->sx130x.txLut[pkt.rf_chain].lut[tx_lut_idx].rf_power;
+        return ERR_CODE_LORA_GATEWAY_TX_UNSUPPORTED_POWER;
     }
+    return 0;
+}
+
+/**
+ * Validate transmission packet in tx param, if packet is valid, enqueueTxPacket packet to be sent or send immediately
+ * @param tx
+ * @return
+ */
+int LoraGatewayListener::enqueueTxPacket(
+    struct lgw_pkt_tx_s &pkt
+)
+{
+    // determine packet type (class A, B or C)
+    enum scheduler_pkt_type_e downlinkClass;
+    int r = invalidateTxPacket(pkt, downlinkClass);
+    if (r)
+        return r;
 
     // insert packet to be sent into JIT queue
     // previous gw lib version
@@ -351,21 +364,24 @@ int LoraGatewayListener::enqueueTxPacket(
     mutexLgw.lock();
     lgw_get_instcnt(&current_concentrator_time);
     mutexLgw.unlock();
-    int jit_result = jit_enqueue(&jit_queue[pkt.rf_chain], current_concentrator_time, &pkt, downlinkClass);
-    if (jit_result) {
+
+    ScheduleItemConcentrator item;
+    item.setItem(&pkt);
+    item.pktType = downlinkClass;
+    auto rs = scheduler->enqueue(current_concentrator_time, item);
+    if (rs) {
         log(LOG_ERR, ERR_CODE_LORA_GATEWAY_JIT_ENQUEUE_FAILED, ERR_LORA_GATEWAY_JIT_ENQUEUE_FAILED);
         return ERR_CODE_LORA_GATEWAY_JIT_ENQUEUE_FAILED;
     }
     return CODE_OK;
 }
 
-LoraGatewayListener::LoraGatewayListener()
+LoraGatewayListener::LoraGatewayListener(
+    Scheduler *aScheduler
+)
     : logVerbosity(0), onLog(nullptr), onUpstream(nullptr), xtal_correct(1.0), state(0),
-    config(nullptr), gatewayId(0)
+    config(nullptr), gatewayId(0), scheduler(aScheduler)
 {
-    // JIT queue initialization
-    jit_queue_init(&jit_queue[0]);
-    jit_queue_init(&jit_queue[1]);
 }
 
 LoraGatewayListener::~LoraGatewayListener() = default;
@@ -503,22 +519,23 @@ void LoraGatewayListener::setOnUpstream(
 }
 
 void LoraGatewayListener::doJitDownstream() {
-    for (auto & i : jit_queue) {
+    for (auto i = 0; i < scheduler->size(); i++) {
         // transfer data and metadata to the concentrator, and schedule TX
         uint32_t current_concentrator_time;
         mutexLgw.lock();
         lgw_get_instcnt(&current_concentrator_time);
         mutexLgw.unlock();
-        int jitPacketIndex = -1;
-        enum jit_error_e jit_result = jit_peek(&i, current_concentrator_time, &jitPacketIndex);
-        if (jit_result == JIT_ERROR_OK) {
+        std::size_t jitPacketIndex;
+        enum scheduler_error_e jit_result = scheduler->peek(jitPacketIndex, current_concentrator_time);
+        if (jit_result == SCHEDULER_ERROR_OK) {
             if (jitPacketIndex >= 0) {
-                struct lgw_pkt_tx_s pkt{};
-                enum jit_pkt_type_e pkt_type;
-                jit_result = jit_dequeue(&i, jitPacketIndex, &pkt, &pkt_type);
-                if (jit_result == JIT_ERROR_OK) {
+                struct lgw_pkt_tx_s pkt;
+                // enum scheduler_pkt_type_e pkt_type;
+                ScheduleItemConcentrator item;
+                jit_result = scheduler->dequeue(item, jitPacketIndex);
+                if (jit_result == SCHEDULER_ERROR_OK) {
                     // update beacon stats
-                    if (pkt_type == JIT_PKT_TYPE_BEACON) {
+                    if (item.pktType == SCHEDULER_PKT_TYPE_BEACON) {
                         // Compensate beacon frequency with xtal error
                         pkt.freq_hz = (uint32_t)(xtal_correct * (double) pkt.freq_hz);
 
@@ -570,7 +587,7 @@ void LoraGatewayListener::doJitDownstream() {
                     log(LOG_WARNING, ERR_CODE_LORA_GATEWAY_JIT_DEQUEUE_FAILED, ERR_LORA_GATEWAY_JIT_DEQUEUE_FAILED);
                 }
             }
-        } else if (jit_result == JIT_ERROR_EMPTY) {
+        } else if (jit_result == SCHEDULER_ERROR_EMPTY) {
             // Do nothing, it can happen
         } else {
             // write to log
@@ -578,3 +595,4 @@ void LoraGatewayListener::doJitDownstream() {
         }
     }
 }
+
