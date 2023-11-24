@@ -20,8 +20,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <cstdint>
 #include <functional>
 
-#include "packet-forwarder/loragw_hal.h"
-
 // values available for the 'tx_mode' parameter
 #define IMMEDIATE       0
 #define TIMESTAMPED     1
@@ -71,7 +69,6 @@ private:
     std::function<ScheduleItem*()> onCreate;
     std::vector<ScheduleItem*> queue;
     std::size_t count;                // Total number of packets in the queue (downlinks, beacons...)
-    void reset();
     void sortTime();
 public:
     explicit Scheduler(std::function<ScheduleItem*()> create);

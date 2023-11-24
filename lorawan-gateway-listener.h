@@ -7,7 +7,7 @@
 
 #include "gateway-settings.h"
 #include "log-intf.h"
-#include "packet-forwarder/loragw_hal.h"
+#include "gateway-settings.h"
 #include "scheduler.h"
 
 #define MEASUREMENT_COUNT_SIZE 23
@@ -17,6 +17,20 @@
 #define FLAG_GATEWAY_LISTENER_NO_SEND   1
 // 2- Do not send beacons
 #define FLAG_GATEWAY_LISTENER_NO_BEACON 2
+
+#define DEF_TRANSMIT_QUEUE_SIZE  32
+
+class TransmitQueue {
+private:
+    std::mutex mutexEnqueue;    ///< control access to the concentrator's queue
+public:
+    size_t size;
+    std::vector<struct lgw_pkt_tx_s> queue;
+    TransmitQueue();
+    virtual ~TransmitQueue();
+    bool push(struct lgw_pkt_tx_s &value);
+    bool pop(struct lgw_pkt_tx_s &value);
+};
 
 class LoraGatewayListener {
 private:
@@ -30,7 +44,8 @@ private:
     double xtal_correct;                                ///< XTAL frequency correction coefficient. XTAL(crystal) in timing refers to a quartz crystal.
     int state;                                          ///< set to 2 to stop all threads. 0- stopped, 1- running, 2- request to stop
     LorawanGatewaySettings *config;
-    std::mutex mutexLgw;                                 ///< control access to the concentrator
+    std::mutex mutexEnqueue;                                 ///< control access to the concentrator's queue
+    TransmitQueue transmitQueue;
 
     int doUpstream(lgw_pkt_rx_s *packets, int count);
     void doJitDownstream();
@@ -49,7 +64,9 @@ private:
         lgw_pkt_tx_s &value,
         enum scheduler_pkt_type_e &downlinkClass
     );
-
+    int schedulePacketToTransmit(
+        struct lgw_pkt_tx_s &pkt
+    );
 public:
     uint64_t gatewayId;        ///< Gateway EUI
 
@@ -85,7 +102,6 @@ public:
     int enqueueTxPacket(
         struct lgw_pkt_tx_s &pkt
     );
-
 };
 
 #endif

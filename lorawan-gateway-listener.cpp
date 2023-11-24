@@ -3,6 +3,7 @@
  */
 #include <thread>
 #include <sstream>
+#include <cstring>
 
 #include "lorawan-gateway-listener.h"
 #include "lorawan-error.h"
@@ -14,6 +15,43 @@
 // ms waited when a fetch return no packets
 #define UPSTREAM_FETCH_DELAY_MS     10
 #define INVALID_TEMPERATURE_C       (-273.15)
+
+TransmitQueue::TransmitQueue()
+    : size(0)
+{
+    queue.resize(DEF_TRANSMIT_QUEUE_SIZE);
+}
+
+TransmitQueue::~TransmitQueue()
+{
+
+}
+
+bool TransmitQueue::push(
+    struct lgw_pkt_tx_s &value
+)
+{
+    if (size >= DEF_TRANSMIT_QUEUE_SIZE)
+        return false;
+    mutexEnqueue.lock();
+    memmove(&queue[size], &value, sizeof(struct lgw_pkt_tx_s ));
+    size++;
+    mutexEnqueue.unlock();
+    return true;
+}
+
+bool TransmitQueue::pop(
+    struct lgw_pkt_tx_s &retVal
+)
+{
+    if (size == 0)
+        return false;
+    mutexEnqueue.lock();
+    size--;
+    memmove(&retVal, &queue[size], sizeof(struct lgw_pkt_tx_s ));
+    mutexEnqueue.unlock();
+    return true;
+}
 
 bool LoraGatewayListener::validateMetadata(
     lgw_pkt_rx_s *p
@@ -185,9 +223,7 @@ void LoraGatewayListener::upstreamDownstreamLoop()
     while (state != 2) {
         struct lgw_pkt_rx_s rxpkt[PACKETS_MAX_SIZE]; // array containing inbound packets + metadata
         // fetch packets
-        mutexLgw.lock();
         int receivedPacketsCount = lgw_receive(PACKETS_MAX_SIZE, rxpkt);
-        mutexLgw.unlock();
         switch(receivedPacketsCount) {
             case LGW_HAL_ERROR:
                 log(LOG_ERR, ERR_CODE_LORA_GATEWAY_FETCH, ERR_LORA_GATEWAY_FETCH);
@@ -348,8 +384,8 @@ int LoraGatewayListener::invalidateTxPacket(
  * @param tx
  * @return
  */
-int LoraGatewayListener::enqueueTxPacket(
-    struct lgw_pkt_tx_s &pkt
+int LoraGatewayListener::schedulePacketToTransmit(
+        struct lgw_pkt_tx_s &pkt
 )
 {
     // determine packet type (class A, B or C)
@@ -361,9 +397,7 @@ int LoraGatewayListener::enqueueTxPacket(
     // insert packet to be sent into JIT queue
     // previous gw lib version
     uint32_t current_concentrator_time;
-    mutexLgw.lock();
     lgw_get_instcnt(&current_concentrator_time);
-    mutexLgw.unlock();
 
     ScheduleItemConcentrator item;
     item.setItem(&pkt);
@@ -374,6 +408,19 @@ int LoraGatewayListener::enqueueTxPacket(
         return ERR_CODE_LORA_GATEWAY_JIT_ENQUEUE_FAILED;
     }
     return CODE_OK;
+}
+
+
+/**
+ * Validate transmission packet in tx param, if packet is valid, enqueueTxPacket packet to be sent or send immediately
+ * @param tx
+ * @return
+ */
+int LoraGatewayListener::enqueueTxPacket(
+    struct lgw_pkt_tx_s &pkt
+)
+{
+    return transmitQueue.push(pkt)? CODE_OK : JIT_TX_ERROR_FULL;
 }
 
 LoraGatewayListener::LoraGatewayListener(
@@ -442,9 +489,7 @@ int LoraGatewayListener::setup()
 
 std::string LoraGatewayListener::version()
 {
-    mutexLgw.lock();
     auto r = lgw_version_info();
-    mutexLgw.unlock();
     return r;
 }
 
@@ -519,12 +564,17 @@ void LoraGatewayListener::setOnUpstream(
 }
 
 void LoraGatewayListener::doJitDownstream() {
+
+    lgw_pkt_tx_s pkt;
+    // check does it some new packet to be sent from outside
+    if (transmitQueue.pop(pkt)) {
+        schedulePacketToTransmit(pkt);
+    }
+
     for (auto i = 0; i < scheduler->size(); i++) {
         // transfer data and metadata to the concentrator, and schedule TX
         uint32_t current_concentrator_time;
-        mutexLgw.lock();
         lgw_get_instcnt(&current_concentrator_time);
-        mutexLgw.unlock();
         std::size_t jitPacketIndex;
         enum scheduler_error_e jit_result = scheduler->peek(jitPacketIndex, current_concentrator_time);
         if (jit_result == SCHEDULER_ERROR_OK) {
@@ -553,9 +603,7 @@ void LoraGatewayListener::doJitDownstream() {
 
                     // check if concentrator is free for sending new packet
                     uint8_t tx_status;
-                    mutexLgw.lock();
                     int result = lgw_status(pkt.rf_chain, TX_STATUS, &tx_status);
-                    mutexLgw.unlock();
                     if (result == LGW_HAL_ERROR) {
                         // write to log
                         log(LOG_INFO, ERR_CODE_LORA_GATEWAY_STATUS_FAILED, ERR_LORA_GATEWAY_STATUS_FAILED);
@@ -571,9 +619,7 @@ void LoraGatewayListener::doJitDownstream() {
                     }
 
                     // send packet to concentrator
-                    mutexLgw.lock();
                     result = lgw_send(&pkt);
-                    mutexLgw.unlock();
                     if (result != LGW_HAL_SUCCESS) {
                         // write to log
                         log(LOG_WARNING, ERR_CODE_LORA_GATEWAY_SEND_FAILED, ERR_LORA_GATEWAY_SEND_FAILED);
@@ -595,4 +641,3 @@ void LoraGatewayListener::doJitDownstream() {
         }
     }
 }
-

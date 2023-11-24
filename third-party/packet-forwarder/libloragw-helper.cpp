@@ -1,7 +1,6 @@
 #include "libloragw-helper.h"
 
 #include "lorawan-error.h"
-#include "log-intf.h"
 #include "lorawan-msg.h"
 
 // libloragw.a: subst-call-c.c calls to LibLoragwHelper
@@ -94,3 +93,4 @@ void LibLoragwHelper::unbind()
 {
     globalLibLoragwHelper = nullptr;
 }
+

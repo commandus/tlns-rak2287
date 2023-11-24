@@ -1,7 +1,7 @@
 #ifndef SCHEDULECONCENTRATOR_H
 #define SCHEDULECONCENTRATOR_H
 
-#include "packet-forwarder/loragw_hal.h"
+#include "gateway-settings.h"
 
 #include "scheduler.h"
 

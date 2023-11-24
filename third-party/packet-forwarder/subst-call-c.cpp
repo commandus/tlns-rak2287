@@ -1,7 +1,6 @@
 #include "subst-call-c.h"
 
-#include <stdarg.h>
-#include <unistd.h>
+#include <cstdarg>
 
 #include "packet-forwarder/libloragw-helper.h"
 
@@ -62,6 +61,29 @@ static int ft_print_d(const char *fmt, va_list ap, int len) {
     return ft_printf_aux(fmt, ap, len);
 }
 
+static int ft_print_f(const char *fmt, va_list ap, int len) {
+    double f = va_arg(ap, double);
+    int n;
+    if (f > INT32_MAX)
+        n = INT32_MAX;
+    else
+        if (f < INT32_MIN)
+            n = INT32_MIN;
+        else
+            n = (int) f;
+
+    unsigned long long u;
+    if (n < 0) {
+        ft_putchar('-');
+        len++;
+        u = -(unsigned)n;
+    } else {
+        u = n;
+    }
+    len += ft_putnum(u, 10, "0123456789");
+    return ft_printf_aux(fmt, ap, len);
+}
+
 static int ft_print_o(const char *fmt, va_list ap, int len) {
     unsigned int n = va_arg(ap, unsigned int);
     len += ft_putnum(n, 8, "01234567");
@@ -88,9 +110,8 @@ static int ft_print_X(const char *fmt, va_list ap, int len) {
 
 static int ft_print_s(const char *fmt, va_list ap, int len) {
     const char *s = va_arg(ap, const char *);
-    if (s == NULL) {
+    if (!s)
         s = "(null)";
-    }
     while (*s) {
         ft_putchar(*s++);
         len++;
@@ -108,6 +129,8 @@ ft_print_dispatch_f ft_print_dispatch(char v)
     case 'd':
     case 'i':
         return ft_print_d;
+    case 'f':
+        return ft_print_f;
     case 'o':
         return ft_print_o;
     case 'u':
@@ -121,26 +144,26 @@ ft_print_dispatch_f ft_print_dispatch(char v)
     default:
         return nullptr;
     }
-};
+}
 
 static int ft_printf_aux(const char *fmt, va_list ap, int len) {
     int c;
-
     while (*fmt) {
         c = (unsigned char)*fmt++;
         if (c != '%') {
             ft_putchar(c);
             len++;
         } else {
-            c = (unsigned char)*fmt++;
-            if (ft_print_dispatch(c) == nullptr) {
+            c = (unsigned char) *fmt++;
+            while (!ft_print_dispatch(c)) {
                 if (c == '\0')
                     break;
                 ft_putchar(c);
                 len++;
-            } else {
-                return ft_print_dispatch(c)(fmt, ap, len);
+                c = (unsigned char) *fmt++;
             }
+            if (c != '\0')
+                return ft_print_dispatch(c)(fmt, ap, len);
         }
     }
     return len;

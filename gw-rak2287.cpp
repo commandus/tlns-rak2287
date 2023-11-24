@@ -37,7 +37,7 @@ static LorawanGatewaySettings* findLorawanGatewaySettingsByRegionName(
         // uppercase
         for (int c = 0; c < len; c++) {
             if (::isalpha(name[c]))
-                ((char *)name)[c] = name[c] ^ 32;
+                ((unsigned char *)name)[c] = name[c] ^ 32;
         }
     }
 
@@ -46,7 +46,7 @@ static LorawanGatewaySettings* findLorawanGatewaySettingsByRegionName(
 
 static void printRegionNames(std::ostream &strm)
 {
-    for (auto it: lorawanGatewaySettings) {
+    for (const auto& it: lorawanGatewaySettings) {
         strm << it.name << " ";
     }
 }
@@ -61,8 +61,12 @@ class PosixLibLoragwOpenClose : public LibLoragwOpenClose {
 private:
     std::string devicePath;
 public:
-    
-    explicit PosixLibLoragwOpenClose(const std::string &aDevicePath) : devicePath(aDevicePath) {};
+    explicit PosixLibLoragwOpenClose(
+        const std::string &aDevicePath
+    ) : devicePath(aDevicePath)
+    {
+
+    };
 
     int openDevice(const char *fileName, int mode) override
     {
@@ -90,6 +94,11 @@ public:
     bool enableSend;
     bool enableBeacon;
     int verbosity;
+    LocalGatewayConfiguration()
+        : gwSettings(nullptr), enableSend(false), enableBeacon(false), verbosity(0)
+    {
+
+    }
 };
 
 static LocalGatewayConfiguration localConfig;
@@ -142,7 +151,7 @@ public:
             if (localConfig.verbosity < level)
                 return;
         }
-        struct timeval t;
+        struct timeval t{};
         gettimeofday(&t, nullptr);
         std::cerr << timeval2string(t);
 #ifdef ENABLE_TERM_COLOR
@@ -174,7 +183,7 @@ int parseCmd(
 {
     // device path
     struct arg_str *a_device_path = arg_str1(nullptr, nullptr, "<device-name>", "USB gateway device e.g. /dev/ttyACM0");
-    struct arg_str *a_region_name = arg_str1("c", "region", "<region-name>", "Region name, e.g. \"EU433\" or \"US\"");
+    struct arg_str *a_region_name = arg_str1("c", "region", "<region-name>", R"(Region name, e.g. "EU433" or "US")");
     struct arg_str *a_identity_file_name = arg_str0("i", "id", "<id-file-name>", "Device identities JSON file name");
     struct arg_lit *a_enable_send = arg_lit0("s", "allow-send", "Allow send");
     struct arg_lit *a_enable_beacon = arg_lit0("b", "allow-beacon", "Allow send beacon");
@@ -247,7 +256,7 @@ static void printTrace() {
 #ifdef _MSC_VER
 #else
     void *t[TRACE_BUFFER_SIZE];
-    size_t size = backtrace(t, TRACE_BUFFER_SIZE);
+    auto size = backtrace(t, TRACE_BUFFER_SIZE);
     backtrace_symbols_fd(t, size, STDERR_FILENO);
 #endif
 }
@@ -299,8 +308,8 @@ void signalHandler(int signal)
 void setSignalHandler()
 {
 #ifndef _MSC_VER
-    struct sigaction action;
-    memset(&action, 0, sizeof(struct sigaction));
+    struct sigaction action{};
+    // memset(&action, 0, sizeof(struct sigaction));
     action.sa_handler = &signalHandler;
     sigaction(SIGINT, &action, nullptr);
     sigaction(SIGHUP, &action, nullptr);
@@ -318,8 +327,6 @@ static void run()
     listener->log(LOG_DEBUG, CODE_OK, MSG_LISTENER_RUN);
 
     libLoragwHelper.bind(&errLog, new PosixLibLoragwOpenClose(localConfig.devicePath));
-    if (!libLoragwHelper.onOpenClose)
-        return;
 
     int flags = 0;
     if (!localConfig.enableSend)
@@ -350,11 +357,6 @@ static void init()
     }, 32);
 
     listener = new LoraGatewayListener(&sheduler);
-    if (!listener) {
-        std::cerr << ERR_MESSAGE << ERR_CODE_FAIL_IDENTITY_SERVICE << ": " << ERR_FAIL_IDENTITY_SERVICE << std::endl;
-        exit(ERR_CODE_INSUFFICIENT_MEMORY);
-    }
-
     // signal is not required in USB listener
     // listener->setSysSignalPtr(&lastSysSignal);
     listener->setOnLog(&errLog, localConfig.verbosity);
