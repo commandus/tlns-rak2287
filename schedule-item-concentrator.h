@@ -30,7 +30,7 @@ class ScheduleItemConcentrator : public ScheduleItem {
          */
         void setCountUs(uint32_t value) override;
         uint32_t getTimeOnAir() const override;
-        void setTxMode(uint8_t value) override;
+        void setTxMode(SCHEDULER_TX_MODE value) override;
         ScheduleItemConcentrator();
         ScheduleItemConcentrator(const struct lgw_pkt_tx_s& value);
 };

@@ -1,9 +1,10 @@
 /*
- * C++ wrapper of lora_pkt_fwd.c (C)2019 Semtech License: Revised BSD License, see LICENSE.TXT file included in the project
+ * C++ wrapper of lora_pkt_fwd.c (C)2019 Semtech License: Revised BSD License, see LICENSE.SEMTECH.txt file included in the project
  */
 #include <thread>
 #include <sstream>
 #include <cstring>
+#include <utility>
 
 #include "lorawan-gateway-listener.h"
 #include "lorawan-error.h"
@@ -22,10 +23,7 @@ TransmitQueue::TransmitQueue()
     queue.resize(DEF_TRANSMIT_QUEUE_SIZE);
 }
 
-TransmitQueue::~TransmitQueue()
-{
-
-}
+TransmitQueue::~TransmitQueue() = default;
 
 bool TransmitQueue::push(
     struct lgw_pkt_tx_s &value
@@ -307,7 +305,7 @@ bool LoraGatewayListener::getTxGainLutIndex(
 
 int LoraGatewayListener::invalidateTxPacket(
     lgw_pkt_tx_s &pkt,
-    enum scheduler_pkt_type_e &downlinkClass
+    enum SCHEDULER_PACKET_TYPE &downlinkClass
 )
 {
     // and calculate appropriate time to send
@@ -322,11 +320,9 @@ int LoraGatewayListener::invalidateTxPacket(
             downlinkClass = SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_C;
             break;
         case ON_GPS:
-        {
             // otherwise send on GPS time (converted to timestamp packet)
             log(LOG_WARNING, ERR_CODE_LORA_GATEWAY_SEND_AT_GPS_TIME_DISABLED, ERR_LORA_GATEWAY_SEND_AT_GPS_TIME_DISABLED);
             return ERR_CODE_LORA_GATEWAY_SEND_AT_GPS_TIME_DISABLED;
-        }
         default:
             log(LOG_WARNING, ERR_CODE_LORA_GATEWAY_UNKNOWN_TX_MODE, ERR_LORA_GATEWAY_UNKNOWN_TX_MODE);
             return ERR_CODE_LORA_GATEWAY_UNKNOWN_TX_MODE;
@@ -389,7 +385,7 @@ int LoraGatewayListener::schedulePacketToTransmit(
 )
 {
     // determine packet type (class A, B or C)
-    enum scheduler_pkt_type_e downlinkClass;
+    enum SCHEDULER_PACKET_TYPE downlinkClass;
     int r = invalidateTxPacket(pkt, downlinkClass);
     if (r)
         return r;
@@ -560,27 +556,26 @@ void LoraGatewayListener::setOnUpstream(
 )
 {
     // no prevent mutex required
-    onUpstream = value;
+    onUpstream = std::move(value);
 }
 
 void LoraGatewayListener::doJitDownstream() {
 
     lgw_pkt_tx_s pkt;
     // check does it some new packet to be sent from outside
-    if (transmitQueue.pop(pkt)) {
+    if (transmitQueue.pop(pkt))
         schedulePacketToTransmit(pkt);
-    }
 
     for (auto i = 0; i < scheduler->size(); i++) {
         // transfer data and metadata to the concentrator, and schedule TX
         uint32_t current_concentrator_time;
         lgw_get_instcnt(&current_concentrator_time);
         std::size_t jitPacketIndex;
-        enum scheduler_error_e jit_result = scheduler->peek(jitPacketIndex, current_concentrator_time);
+        enum SCHEDULER_ERROR jit_result = scheduler->peek(jitPacketIndex, current_concentrator_time);
         if (jit_result == SCHEDULER_ERROR_OK) {
             if (jitPacketIndex >= 0) {
                 struct lgw_pkt_tx_s pkt;
-                // enum scheduler_pkt_type_e pkt_type;
+                // enum SCHEDULER_PACKET_TYPE pkt_type;
                 ScheduleItemConcentrator item;
                 jit_result = scheduler->dequeue(item, jitPacketIndex);
                 if (jit_result == SCHEDULER_ERROR_OK) {

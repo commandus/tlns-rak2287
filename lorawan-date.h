@@ -2,7 +2,7 @@
 #define LORAWAN_DATE_H_	1
 
 #include <string>
-#include <inttypes.h>
+#include <cinttypes>
 
 #ifdef _MSC_VER
 #include <stdint.h> // portable: uint64_t   MSVC: __int64

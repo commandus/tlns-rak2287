@@ -11,7 +11,7 @@
 Description:
     LoRa concentrator : Just In Time TX scheduling queue
 
-License: Revised BSD License, see LICENSE.TXT file include in the project
+License: Revised BSD License, see LICENSE.SEMTECH.txt file include in the project
 */
 
 #include <cstdlib>     // qsort_r
@@ -110,7 +110,7 @@ static inline bool jit_collision_test(
 
 #define CONTEXT_FSK_sync_word_size  3
 
-enum scheduler_error_e Scheduler::enqueue(
+enum SCHEDULER_ERROR Scheduler::enqueue(
     uint32_t time_us,
     ScheduleItem &item
 )
@@ -119,7 +119,7 @@ enum scheduler_error_e Scheduler::enqueue(
     uint32_t packet_post_delay = 0;
     uint32_t packet_pre_delay = 0;
     uint32_t target_pre_delay = 0;
-    enum scheduler_error_e err_collision;
+    enum SCHEDULER_ERROR err_collision;
     uint32_t asap_count_us;
 
     if (isFull())
@@ -237,7 +237,7 @@ enum scheduler_error_e Scheduler::enqueue(
     return SCHEDULER_ERROR_OK;
 }
 
-enum scheduler_error_e Scheduler::dequeue(
+enum SCHEDULER_ERROR Scheduler::dequeue(
     ScheduleItem &retItem,
     int index
 )
@@ -257,7 +257,7 @@ enum scheduler_error_e Scheduler::dequeue(
     return SCHEDULER_ERROR_OK;
 }
 
-enum scheduler_error_e Scheduler::peek(
+enum SCHEDULER_ERROR Scheduler::peek(
     std::size_t &retIndex,
     uint32_t time_us
 ) {

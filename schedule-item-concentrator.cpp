@@ -106,17 +106,16 @@ static uint32_t lora_packet_time_on_air(const uint8_t bw, const uint8_t sf, cons
 static uint32_t lgwTimeOnAir(
     const struct lgw_pkt_tx_s *packet
 ) {
-    double t_fsk;
-    uint32_t toa_ms, toa_us;
-
     if (!packet)
         return 0;
-
+    uint32_t toa_ms;
     if (packet->modulation == MOD_LORA) {
-        toa_us = lora_packet_time_on_air(packet->bandwidth, packet->datarate, packet->coderate, packet->preamble, packet->no_header, packet->no_crc, packet->size, NULL, NULL, NULL);
-        toa_ms = (uint32_t)( (double)toa_us / 1000.0 + 0.5 );
+        uint32_t toa_us = lora_packet_time_on_air(packet->bandwidth, packet->datarate,
+            packet->coderate, packet->preamble, packet->no_header, packet->no_crc, packet->size, nullptr, nullptr, nullptr);
+        toa_ms = (uint32_t) ((double) toa_us / 1000.0 + 0.5);
     } else if (packet->modulation == MOD_FSK) {
-        t_fsk = (8 * (double)(packet->preamble + CONTEXT_FSK_sync_word_size + 1 + packet->size + ((packet->no_crc == true) ? 0 : 2)) / (double)packet->datarate) * 1E3;
+        double t_fsk = (8 * (double)(packet->preamble + CONTEXT_FSK_sync_word_size + 1 + packet->size
+                + ((packet->no_crc == true) ? 0 : 2)) / (double)packet->datarate) * 1E3;
         toa_ms = (uint32_t)t_fsk + 1; /* add margin for rounding */
     } else
         toa_ms = 0;
@@ -129,8 +128,8 @@ uint32_t ScheduleItemConcentrator::getTimeOnAir() const
 }
 
 void ScheduleItemConcentrator::setTxMode(
-    uint8_t value
+    enum SCHEDULER_TX_MODE value
 )
 {
-    item.tx_mode = value;
+    item.tx_mode = (uint8_t) value;
 }

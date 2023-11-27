@@ -13,7 +13,7 @@
 Description:
     LoRa concentrator : Just In Time TX scheduling queue
 
-License: Revised BSD License, see LICENSE.TXT file include in the project
+License: Revised BSD License, see LICENSE.SEMTECH.txt file include in the project
 */
 
 #include <vector>
@@ -21,11 +21,13 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <functional>
 
 // values available for the 'tx_mode' parameter
-#define IMMEDIATE       0
-#define TIMESTAMPED     1
-#define ON_GPS          2
+enum SCHEDULER_TX_MODE {
+    IMMEDIATE = 0,
+    TIMESTAMPED = 1,
+    ON_GPS = 2
+};
 
-enum scheduler_error_e {
+enum SCHEDULER_ERROR {
     SCHEDULER_ERROR_OK,
     SCHEDULER_ERROR_TOO_LATE,
     SCHEDULER_ERROR_TOO_EARLY,
@@ -39,28 +41,31 @@ enum scheduler_error_e {
     SCHEDULER_ERROR_INVALID
 };
 
-enum scheduler_pkt_type_e {
+enum SCHEDULER_PACKET_TYPE {
     SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_A,
     SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_B,
     SCHEDULER_PKT_TYPE_DOWNLINK_CLASS_C,
     SCHEDULER_PKT_TYPE_BEACON
 };
 
+/**
+ * Abstract class
+ */
 class ScheduleItem {
 public:
-    enum scheduler_pkt_type_e pktType;   // Packet type: Downlink, Beacon...
-    uint32_t preDelay;             // Amount of time before packet timestamp to be reserved
-    uint32_t postDelay;            // Amount of time after packet timestamp to be reserved (time on air)
-    virtual void* get() = 0;
-    virtual void setItem(const void* value) = 0;
-    virtual uint32_t getCountUs() const = 0;
-    virtual void setCountUs(uint32_t value) = 0;
+    enum SCHEDULER_PACKET_TYPE pktType;             ///< Packet type: Downlink class A, B. C, Beacon...
+    uint32_t preDelay;                              ///< Amount of time before packet timestamp to be reserved
+    uint32_t postDelay;                             ///< Amount of time after packet timestamp to be reserved (time on air)
+    virtual void* get() = 0;                        ///< return packet to be send
+    virtual void setItem(const void* value) = 0;    ///< assign packet to be send
+    virtual uint32_t getCountUs() const = 0;        ///< return internal time counter in microseconds
+    virtual void setCountUs(uint32_t value) = 0;    ///< set internal time counter in microseconds
     virtual uint32_t getTimeOnAir() const = 0;
     /**
      * Set when to send
      * @param value 0- IMMEDIATE, 1- TIMESTAMPED, 2- ON_GPS
      */
-    virtual void setTxMode(uint8_t value) = 0;        // select on what event/time the TX is triggered
+    virtual void setTxMode(SCHEDULER_TX_MODE value) = 0;        // select on what event/time the TX is triggered
     ScheduleItem();
 };
 
@@ -79,9 +84,9 @@ public:
     bool isFull();
     bool isEmpty() const;
     // Return index of node containing a packet inline with given time
-    enum scheduler_error_e peek(std::size_t &retIndex, uint32_t time_us);
-    enum scheduler_error_e enqueue(uint32_t time_us, ScheduleItem &item);
-    enum scheduler_error_e dequeue(ScheduleItem &retItem, int index);
+    enum SCHEDULER_ERROR peek(std::size_t &retIndex, uint32_t time_us);
+    enum SCHEDULER_ERROR enqueue(uint32_t time_us, ScheduleItem &item);
+    enum SCHEDULER_ERROR dequeue(ScheduleItem &retItem, int index);
 };
 
 #endif

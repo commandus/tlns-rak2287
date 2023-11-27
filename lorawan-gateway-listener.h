@@ -62,7 +62,7 @@ private:
      */
     int invalidateTxPacket(
         lgw_pkt_tx_s &value,
-        enum scheduler_pkt_type_e &downlinkClass
+        enum SCHEDULER_PACKET_TYPE &downlinkClass
     );
     int schedulePacketToTransmit(
         struct lgw_pkt_tx_s &pkt

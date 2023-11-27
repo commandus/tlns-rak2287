@@ -15,6 +15,7 @@ extern "C" {
 #define restrict // C++ in general doesn't
 #endif
 
+// X/Open 7, incorporating POSIX 2017
 #define _XOPEN_SOURCE 700
 
 #endif
@@ -84,7 +85,7 @@ extern "C" {
 
 /* return status code */
 #define LGW_HAL_SUCCESS     0
-#define LGW_HAL_ERROR       -1
+#define LGW_HAL_ERROR       (-1)
 #define LGW_LBT_NOT_ALLOWED 1
 
 /* status code for TX_STATUS */
@@ -99,14 +100,14 @@ extern "C" {
 #define TX_STATUS       1
 #define RX_STATUS       2
 
-#define IS_LORA_BW(bw)          ((bw == BW_125KHZ) || (bw == BW_250KHZ) || (bw == BW_500KHZ))
-#define IS_LORA_DR(dr)          ((dr == DR_LORA_SF5) || (dr == DR_LORA_SF6) || (dr == DR_LORA_SF7) || (dr == DR_LORA_SF8) || (dr == DR_LORA_SF9) || (dr == DR_LORA_SF10) || (dr == DR_LORA_SF11) || (dr == DR_LORA_SF12))
-#define IS_LORA_CR(cr)          ((cr == CR_LORA_4_5) || (cr == CR_LORA_4_6) || (cr == CR_LORA_4_7) || (cr == CR_LORA_4_8))
+#define IS_LORA_BW(bw)          (((bw) == BW_125KHZ) || ((bw) == BW_250KHZ) || ((bw) == BW_500KHZ))
+#define IS_LORA_DR(dr)          (((dr) == DR_LORA_SF5) || ((dr) == DR_LORA_SF6) || ((dr) == DR_LORA_SF7) || ((dr) == DR_LORA_SF8) || ((dr) == DR_LORA_SF9) || ((dr) == DR_LORA_SF10) || ((dr) == DR_LORA_SF11) || ((dr) == DR_LORA_SF12))
+#define IS_LORA_CR(cr)          (((cr) == CR_LORA_4_5) || ((cr) == CR_LORA_4_6) || ((cr) == CR_LORA_4_7) || ((cr) == CR_LORA_4_8))
 
-#define IS_FSK_BW(bw)           ((bw >= 1) && (bw <= 7))
-#define IS_FSK_DR(dr)           ((dr >= DR_FSK_MIN) && (dr <= DR_FSK_MAX))
+#define IS_FSK_BW(bw)           (((bw) >= 1) && ((bw) <= 7))
+#define IS_FSK_DR(dr)           (((dr) >= DR_FSK_MIN) && ((dr) <= DR_FSK_MAX))
 
-#define IS_TX_MODE(mode)        ((mode == IMMEDIATE) || (mode == TIMESTAMPED) || (mode == ON_GPS))
+#define IS_TX_MODE(mode)        (((mode) == IMMEDIATE) || ((mode) == TIMESTAMPED) || ((mode) == ON_GPS))
 
 /**
 @struct lgw_rssi_tcomp_s

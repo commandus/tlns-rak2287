@@ -1713,7 +1713,7 @@ std::string NETWORKIDENTITY::toString() const
 std::string NETWORKIDENTITY::toJsonString() const
 {
     std::stringstream ss;
-	ss << "{\"addr\": \"" << DEVADDR2string(devaddr) 
+	ss << R"({"addr": ")" << DEVADDR2string(devaddr)
         << "\", \"device\": " << devid.toJsonString() << "}";
 	return ss.str();
 }
