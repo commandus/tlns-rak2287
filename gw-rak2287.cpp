@@ -366,7 +366,7 @@ static void init()
                 print_lgw_pkt_rx_s(std::cout, packet);
                 std::cout << std::endl;
             } else {
-                std::cout << hexString(std::string((char *) &packet->payload[0], packet->size)) << std::endl;
+                std::cout << hexString((char *) packet->payload, packet->size) << std::endl;
             }
         }
     );
