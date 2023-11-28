@@ -15,7 +15,6 @@
 #include "strptime.h"
 #else
 #include <sys/time.h>
-#include "strptime.h"
 #define TMSIZE sizeof(struct tm)
 #define localtime_s(tm, time) memmove(tm, localtime(time), TMSIZE)
 #define gmtime_s(tm, time) memmove(tm, gmtime(time), TMSIZE)
