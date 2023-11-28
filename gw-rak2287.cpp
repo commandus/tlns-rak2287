@@ -188,7 +188,7 @@ int parseCmd(
     struct arg_lit *a_enable_send = arg_lit0("s", "allow-send", "Allow send");
     struct arg_lit *a_enable_beacon = arg_lit0("b", "allow-beacon", "Allow send beacon");
     struct arg_lit *a_verbosity = arg_litn("v", "verbose", 0, 7, "Verbosity level -v alert, -vv critical error, -vvv error, -vvvv warning, "
-        "-vvvvv siginicant info, -vvvvvv  info, -vvvvvvv  debug");
+        "-vvvvv significant info, -vvvvvv  info, -vvvvvvv  debug");
     struct arg_lit *a_help = arg_lit0("?", "help", "Show this help");
     struct arg_end *a_end = arg_end(20);
 
@@ -323,9 +323,7 @@ void setSignalHandler()
 static void run()
 {
     setSignalHandler();
-
     listener->log(LOG_DEBUG, CODE_OK, MSG_LISTENER_RUN);
-
     libLoragwHelper.bind(&errLog, new PosixLibLoragwOpenClose(localConfig.devicePath));
 
     int flags = 0;
@@ -335,6 +333,10 @@ static void run()
         flags |= FLAG_GATEWAY_LISTENER_NO_BEACON;
 
     listener->setConfig(localConfig.gwSettings);
+    if (localConfig.verbosity) {
+        print_header_lgw_pkt_rx_s(std::cout);
+        std::cout << std::endl;
+    }
     int r = listener->run();
     if (r) {
         std::stringstream ss;

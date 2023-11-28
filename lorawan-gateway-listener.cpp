@@ -21,6 +21,13 @@
 
 #define DLMT    ", "
 
+void print_header_lgw_pkt_rx_s(
+    std::ostream &strm
+)
+{
+    strm << "frequency, offs, IF, stat, counter, RF, id, M, B, DR, CR, RSSI ch, RSSI sig, SNR avg, SNR min, SNR max, CRC, size, payload, rcvd, time";
+}
+
 void print_lgw_pkt_rx_s(
     std::ostream &strm,
     struct lgw_pkt_rx_s *value

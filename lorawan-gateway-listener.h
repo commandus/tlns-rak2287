@@ -20,6 +20,7 @@
 
 #define DEF_TRANSMIT_QUEUE_SIZE  32
 
+void print_header_lgw_pkt_rx_s(std::ostream &strm);
 void print_lgw_pkt_rx_s(std::ostream &strm, struct lgw_pkt_rx_s *value);
 
 class TransmitQueue {
