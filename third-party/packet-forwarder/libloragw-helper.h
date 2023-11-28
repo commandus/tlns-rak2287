@@ -23,6 +23,7 @@ class LibLoragwOpenClose {
     public:
         virtual int openDevice(const char *fileName, int mode) = 0;
         virtual int closeDevice(int fd) = 0;
+        virtual ~LibLoragwOpenClose() = default;
 };
 
 class LibLoragwHelper {

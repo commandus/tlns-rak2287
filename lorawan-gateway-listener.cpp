@@ -419,15 +419,26 @@ int LoraGatewayListener::enqueueTxPacket(
     return transmitQueue.push(pkt)? CODE_OK : JIT_TX_ERROR_FULL;
 }
 
-LoraGatewayListener::LoraGatewayListener(
-    Scheduler *aScheduler
-)
+LoraGatewayListener::LoraGatewayListener()
     : logVerbosity(0), onLog(nullptr), onUpstream(nullptr), xtal_correct(1.0), state(0),
-    config(nullptr), gatewayId(0), scheduler(aScheduler)
+    config(nullptr), gatewayId(0), scheduler(nullptr)
 {
 }
 
-LoraGatewayListener::~LoraGatewayListener() = default;
+LoraGatewayListener::LoraGatewayListener(
+    std::function<ScheduleItem*()> create,
+    size_t queueSize
+)
+    : LoraGatewayListener()
+{
+    scheduler = new Scheduler(create, queueSize);
+}
+
+LoraGatewayListener::~LoraGatewayListener()
+{
+    if (scheduler)
+        delete scheduler;
+}
 
 int LoraGatewayListener::setup()
 {
@@ -559,13 +570,13 @@ void LoraGatewayListener::setOnUpstream(
     onUpstream = std::move(value);
 }
 
-void LoraGatewayListener::doJitDownstream() {
+void LoraGatewayListener::doJitDownstream()
+{
 
     lgw_pkt_tx_s pkt;
     // check does it some new packet to be sent from outside
     if (transmitQueue.pop(pkt))
         schedulePacketToTransmit(pkt);
-
     for (auto i = 0; i < scheduler->size(); i++) {
         // transfer data and metadata to the concentrator, and schedule TX
         uint32_t current_concentrator_time;

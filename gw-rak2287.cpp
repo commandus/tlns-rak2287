@@ -352,11 +352,9 @@ static void init()
     }
     libLoragwHelper.bind(&errLog, nullptr);
 
-    Scheduler sheduler([]() {
+    listener = new LoraGatewayListener([]() {
         return new ScheduleItemConcentrator;
     }, 32);
-
-    listener = new LoraGatewayListener(&sheduler);
     // signal is not required in USB listener
     // listener->setSysSignalPtr(&lastSysSignal);
     listener->setOnLog(&errLog, localConfig.verbosity);

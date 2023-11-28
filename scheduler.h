@@ -67,6 +67,7 @@ public:
      */
     virtual void setTxMode(SCHEDULER_TX_MODE value) = 0;        // select on what event/time the TX is triggered
     ScheduleItem();
+    virtual ~ScheduleItem() = default;
 };
 
 class Scheduler {

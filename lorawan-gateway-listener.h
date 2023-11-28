@@ -69,8 +69,8 @@ private:
     );
 public:
     uint64_t gatewayId;        ///< Gateway EUI
-
-    explicit LoraGatewayListener(Scheduler *scheduler);
+    LoraGatewayListener();
+    explicit LoraGatewayListener(std::function<ScheduleItem*()> create, size_t queueSize);
     ~LoraGatewayListener();
 
     void log(

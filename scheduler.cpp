@@ -61,6 +61,7 @@ std::size_t Scheduler::size()
 void Scheduler::setSize(std::size_t size)
 {
     auto sz = queue.size();
+
     if (size < sz) {
         for (auto i = size; i < sz; i++)
             delete queue[i];
@@ -86,7 +87,7 @@ void Scheduler::sortTime()
 {
     std::qsort(queue.data(), queue.size(), sizeof(ScheduleItem *),
         [](const void *a, const void *b) {
-            const ScheduleItem *aa = *(const ScheduleItem **) a;
+            auto aa = *(const ScheduleItem **) a;
             return (int) (
                 (*(const ScheduleItem **) a)->getCountUs() - (*(const ScheduleItem **) b)->getCountUs());
         });
@@ -281,7 +282,6 @@ enum SCHEDULER_ERROR Scheduler::peek(
             i = 0;
             continue;
         }
-
         // Then look for highest priority packet to be sent
         if ((idx_highest_priority == -1)
             || (((queue[i]->getCountUs() - time_us) < (queue[idx_highest_priority]->getCountUs() - time_us)))) {
