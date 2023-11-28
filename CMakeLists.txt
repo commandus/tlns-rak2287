@@ -21,14 +21,10 @@ find_library(LIBLORAGW NAMES loragw HINTS
 	"${LIBLORAGW_ROOT}/build/Release"
 )
 
-# embedded-listener.cpp libloragw-helper.cpp subst-call-c.cpp usb-listener.cpp utilusb.cpp lora-gateway-listener.cpp gateway-file-json.cpp
-
 set(SRC_MAIN
-	gw-rak2287.cpp
-    lorawan-gateway-listener.cpp
-	scheduler.cpp schedule-item-concentrator.cpp
-	lorawan-error.cpp lorawan-msg.cpp
-	lorawan-date.cpp lorawan-string.cpp lorawan-conv.cpp lorawan-types.cpp
+	gw-rak2287.cpp lorawan-gateway-listener.cpp	scheduler.cpp schedule-item-concentrator.cpp
+	lorawan/lorawan-error.cpp lorawan/lorawan-msg.cpp lorawan/lorawan-date.cpp lorawan/lorawan-string.cpp
+	lorawan/lorawan-conv.cpp lorawan/lorawan-types.cpp
 	third-party/packet-forwarder/subst-call-c.cpp
 	third-party/packet-forwarder/libloragw-helper.cpp
 	third-party/strptime.cpp

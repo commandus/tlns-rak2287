@@ -8,10 +8,10 @@
 #include <iomanip>
 
 #include "lorawan-gateway-listener.h"
-#include "lorawan-error.h"
-#include "lorawan-msg.h"
+#include "lorawan/lorawan-error.h"
+#include "lorawan/lorawan-msg.h"
 #include "schedule-item-concentrator.h"
-#include "lorawan-string.h"
+#include "lorawan/lorawan-string.h"
 
 // max number of packets per fetch/send cycle
 #define PACKETS_MAX_SIZE            255

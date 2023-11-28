@@ -1,7 +1,7 @@
 #include "libloragw-helper.h"
 
-#include "lorawan-error.h"
-#include "lorawan-msg.h"
+#include "lorawan/lorawan-error.h"
+#include "lorawan/lorawan-msg.h"
 
 // libloragw.a: subst-call-c.c calls to LibLoragwHelper
 

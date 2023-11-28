@@ -13,10 +13,10 @@
 #include "argtable3/argtable3.h"
 
 #include "packet-forwarder/libloragw-helper.h"
-#include "lorawan-error.h"
-#include "lorawan-msg.h"
-#include "lorawan-date.h"
-#include "lorawan-string.h"
+#include "lorawan/lorawan-error.h"
+#include "lorawan/lorawan-msg.h"
+#include "lorawan/lorawan-date.h"
+#include "lorawan/lorawan-string.h"
 
 // generated gateway regional settings source code
 #include "config/gateway_usb_conf.h"

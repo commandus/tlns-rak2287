@@ -15,15 +15,16 @@ AM_CXXFLAGS= -std=c++11 $(COMMON_C_FLAGS)
 AM_CPPFLAGS = $(COMMON_C_FLAGS)
 
 nobase_dist_include_HEADERS = \
-    config.h gateway-settings.h lorawan-const.h lorawan-date.h lorawan-gateway-listener.h lorawan-string.h \
-    schedule-item-concentrator.h gateway-lora.h log-intf.h lorawan-conv.h lorawan-error.h lorawan-msg.h \
-    lorawan-types.h scheduler.h \
+    config.h gateway-settings.h lorawan-gateway-listener.h \
+    schedule-item-concentrator.h gateway-lora.h log-intf.h scheduler.h \
+    lorawan/lorawan-conv.h lorawan/lorawan-error.h lorawan/lorawan-msg.h \
+    lorawan/lorawan-types.h lorawan/lorawan-string.h lorawan/lorawan-const.h lorawan/lorawan-date.h \
     config/gateway_usb_conf.h \
     third-party/strptime.h \
-	third-party/argtable3/argtable3.h \
-	third-party/packet-forwarder/libloragw-helper.h \
-	third-party/packet-forwarder/loragw_hal.h.patch \
-	third-party/packet-forwarder/subst-call-c.h
+    third-party/argtable3/argtable3.h \
+    third-party/packet-forwarder/libloragw-helper.h \
+    third-party/packet-forwarder/loragw_hal.h.patch \
+    third-party/packet-forwarder/subst-call-c.h
 
 #
 # Binaries
@@ -34,8 +35,8 @@ tlns_rak2287_SOURCES =\
 	gw-rak2287.cpp \
     lorawan-gateway-listener.cpp \
 	scheduler.cpp schedule-item-concentrator.cpp \
-	lorawan-error.cpp lorawan-msg.cpp \
-	lorawan-date.cpp lorawan-string.cpp lorawan-conv.cpp lorawan-types.cpp \
+    lorawan/lorawan-error.cpp lorawan/lorawan-msg.cpp lorawan/lorawan-date.cpp lorawan/lorawan-string.cpp \
+    lorawan/lorawan-conv.cpp lorawan/lorawan-types.cpp \
 	third-party/packet-forwarder/subst-call-c.cpp \
 	third-party/packet-forwarder/libloragw-helper.cpp \
 	third-party/strptime.cpp \

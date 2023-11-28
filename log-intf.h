@@ -1,7 +1,7 @@
 #ifndef LOG_INTF_H_
 #define LOG_INTF_H_	1
 
-#include "lorawan-types.h"
+#include "lorawan/lorawan-types.h"
 
 class LogIntf {
 public:
