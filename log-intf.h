@@ -3,17 +3,6 @@
 
 #include "lorawan-types.h"
 
-class Payload {
-public:
-    time_t received;
-    std::string eui;
-    std::string devName;
-    int frequency;
-    int rssi;
-    float lsnr;
-    std::string payload;
-};
-
 class LogIntf {
 public:
     virtual void onInfo(

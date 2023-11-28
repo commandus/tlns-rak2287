@@ -5,17 +5,53 @@
 #include <sstream>
 #include <cstring>
 #include <utility>
+#include <iomanip>
 
 #include "lorawan-gateway-listener.h"
 #include "lorawan-error.h"
 #include "lorawan-msg.h"
 #include "schedule-item-concentrator.h"
+#include "lorawan-string.h"
 
 // max number of packets per fetch/send cycle
 #define PACKETS_MAX_SIZE            255
 // ms waited when a fetch return no packets
 #define UPSTREAM_FETCH_DELAY_MS     10
 #define INVALID_TEMPERATURE_C       (-273.15)
+
+#define DLMT    ", "
+
+void print_lgw_pkt_rx_s(
+    std::ostream &strm,
+    struct lgw_pkt_rx_s *value
+)
+{
+    if (!value)
+        return;
+    strm << std::dec
+        << value->freq_hz << DLMT                      // central frequency of the IF chain
+        << value->freq_offset << DLMT                   // offset
+        << (unsigned int) value->if_chain << DLMT       // by which IF chain was packet received
+        << (unsigned int) value->status << DLMT         // status of the received packet
+        << value->count_us << DLMT                      // internal concentrator counter for timestamping, 1 microsecond resolution
+        << (unsigned int) value->rf_chain << DLMT       // through which RF chain the packet was received
+        << (unsigned int) value->modem_id << DLMT
+        << (unsigned int) value->modulation << DLMT     // modulation used by the packet
+        << (unsigned int) value->bandwidth << DLMT      // modulation bandwidth (LoRa only)
+        << value->datarate << DLMT                      // RX datarate of the packet (SF for LoRa)
+        << (unsigned int) value->coderate << DLMT       // error-correcting code of the packet (LoRa only)
+        << std::fixed << std::setprecision(4) << value->rssic << DLMT                         // average RSSI of the channel in dB
+        << value->rssis << DLMT                         // average RSSI of the signal in dB
+        << value->snr << DLMT                           // average packet SNR, in dB (LoRa only)
+        << value->snr_min << DLMT                       // minimum packet SNR, in dB (LoRa only)
+        << value->snr_max << DLMT                       // maximum packet SNR, in dB (LoRa only)
+        << value->crc << DLMT                           // CRC that was received in the payload
+        << std::dec
+        << value->size << DLMT                          // payload size in bytes
+        << hexString(&value->payload, value->size) << DLMT   // buffer containing the payload
+        << value->ftime_received << DLMT // a fine timestamp has been received
+        << value->ftime;          // packet fine timestamp (nanoseconds since last PPS)
+}
 
 TransmitQueue::TransmitQueue()
     : size(0)

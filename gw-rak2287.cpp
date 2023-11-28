@@ -360,7 +360,12 @@ static void init()
     listener->setOnLog(&errLog, localConfig.verbosity);
     listener->setOnUpstream(
         [](const LoraGatewayListener *listener, struct lgw_pkt_rx_s *packet) {
-            std::cout << hexString(std::string((char *) &packet->payload[0], packet->size)) << std::endl;
+            if (localConfig.verbosity) {
+                print_lgw_pkt_rx_s(std::cout, packet);
+                std::cout << std::endl;
+            } else {
+                std::cout << hexString(std::string((char *) &packet->payload[0], packet->size)) << std::endl;
+            }
         }
     );
 }

@@ -20,6 +20,8 @@
 
 #define DEF_TRANSMIT_QUEUE_SIZE  32
 
+void print_lgw_pkt_rx_s(std::ostream &strm, struct lgw_pkt_rx_s *value);
+
 class TransmitQueue {
 private:
     std::mutex mutexEnqueue;    ///< control access to the concentrator's queue
