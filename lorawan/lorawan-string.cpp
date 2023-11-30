@@ -4,6 +4,7 @@
 
 #include "lorawan-conv.h"
 #include "lorawan-string.h"
+#include "lorawan-mac.h"
 
 /**
  * @see https://stackoverflow.com/questions/2896600/how-to-replace-all-occurrences-of-a-character-in-string
@@ -199,7 +200,7 @@ std::string JOIN_ACCEPT_FRAME_HEADER2string(
        << R"(", "devAddr": ")" << DEVADDR2string(value.devAddr)
        << R"(", "dlSettings": {)"
        << "\"RX2DataRate\": " << (int) value.dlSettings.RX2DataRate	    ///< downlink data rate that serves to communicate with the end-device on the second receive window (RX2)
-       << ", \"RX1DROffset\": " << (int) value.dlSettings.RX1DROffset         	    ///< offset between the uplink data rate and the downlink data rate used to communicate with the end-device on the first receive window (RX1)
+       << ", \"RX1DROffset\": " << (int) value.dlSettings.RX1DROffset   ///< offset between the uplink data rate and the downlink data rate used to communicate with the end-device on the first receive window (RX1)
        << ", \"optNeg\": " << (int) value.dlSettings.optNeg     	    ///< 1.0- RFU, 1.1- optNeg
        << R"(}, "rxDelay": ")" << (int) value.rxDelay
        << "\"}";
@@ -353,13 +354,136 @@ MTYPE string2mtype(
 	 	return MTYPE_UNCONFIRMED_DATA_DOWN;
 	if (value == "confirmed-data-up")
 		return MTYPE_CONFIRMED_DATA_UP;
-    if (value == "confirmed-data-up")
+    if (value == "confirmed-data-down")
 	 	return MTYPE_CONFIRMED_DATA_DOWN;
  	if (value == "rejoin-request")
 		return MTYPE_REJOIN_REQUEST;
     if (value == "proprietary-radio")
 	 	return MTYPE_PROPRIETARYRADIO;
 	return MTYPE_JOIN_REQUEST;	//?!!
+}
+
+std::string mtype2string(
+    MTYPE value
+)
+{
+    switch (value) {
+        case MTYPE_JOIN_REQUEST:
+            return "join-request";
+        case MTYPE_JOIN_ACCEPT:
+            return "join-accept";
+        case MTYPE_UNCONFIRMED_DATA_UP:
+            return "unconfirmed-data-up";
+        case MTYPE_UNCONFIRMED_DATA_DOWN:
+            return "unconfirmed-data-down";
+        case MTYPE_CONFIRMED_DATA_UP:
+            return "confirmed-data-up";
+        case MTYPE_CONFIRMED_DATA_DOWN:
+            return "confirmed-data-down";
+        case MTYPE_REJOIN_REQUEST:
+            return "rejoin-request";
+        case MTYPE_PROPRIETARYRADIO:
+            return "proprietary-radio";
+        default:
+            return "";
+    }
+}
+
+MHDR string2mhdr(
+    const std::string &value
+)
+{
+    MHDR r{};
+    r.f.mtype = string2mtype(value);
+    return r;
+}
+
+std::string mhdr2string(
+    MHDR value
+)
+{
+    return mtype2string((MTYPE) value.f.mtype);
+}
+
+static bool isDownlink(
+    MHDR mhdr
+)
+{
+    return ((mhdr.f.mtype == MTYPE_UNCONFIRMED_DATA_DOWN) || (mhdr.f.mtype == MTYPE_CONFIRMED_DATA_DOWN));
+}
+
+static bool isUplink(
+    MHDR mhdr
+)
+{
+    return ((mhdr.f.mtype == MTYPE_UNCONFIRMED_DATA_UP) || (mhdr.f.mtype == MTYPE_CONFIRMED_DATA_UP));
+}
+
+#define DLMT    ", "
+
+std::string fctrl2string(
+    const RFM_HEADER* hdr
+)
+{
+    if (!hdr)
+        return "";
+    std::stringstream ss;
+    // frame-options length actual length of FOpts
+    ss << (unsigned int) hdr->fctrl.f.foptslen << DLMT;
+    // 1- gateway has more data pending to be sent
+    if (isDownlink(hdr->macheader))
+        ss << (hdr->fctrl.f.fpending == 0?"not-":"") << "pending" << DLMT;
+
+    if (isUplink(hdr->macheader))
+        ss << (hdr->fctrl.fup.classb == 0?"no-":"") << "classB" << DLMT;
+    ss << (hdr->fctrl.f.ack == 0?"no ":"") << "ACK" << DLMT;
+    // validate that the network still receives the uplink frames.
+    if (isUplink(hdr->macheader))
+        ss << (hdr->fctrl.fup.addrackreq == 0?"no-":"") << "addrACKrequest" << DLMT;
+    // network will control the data rate of the end-device through the MAC commands
+    ss << (hdr->fctrl.f.adr == 0?"no ":"") << "adr";
+    return ss.str();
+}
+
+/**
+ * MAC command identifier (CID)
+ * @param cid MAC command identifier
+ * @param foptSize
+ * @param bufferSize
+ * @return
+ */
+static std::string cid2string(
+    char cid
+)
+{
+    return getMACCommandName(cid);
+}
+
+std::string mac2string(
+    void *value,
+    uint8_t foptSize,
+    size_t bufferSize
+)
+{
+    size_t sz = foptSize;
+    if (sz > bufferSize)
+        sz = bufferSize;
+    if (!sz)
+        return "";
+    return hexString((char *) value, sz) + "(" + cid2string(*(const char *) value) + ")";
+}
+
+std::string rfm_header2string(
+    const RFM_HEADER* value
+)
+{
+    std::stringstream ss;
+    ss
+        << mhdr2string(value->macheader) << DLMT
+        << DEVADDR2string(value->devaddr) << DLMT
+        << fctrl2string(value) << DLMT
+        << value->fcnt;     // frame counter
+    return ss.str();
 }
 
 ACTIVATION string2activation(

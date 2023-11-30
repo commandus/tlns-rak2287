@@ -47,6 +47,12 @@ std::string deviceclass2string(DEVICECLASS value);
 
 DEVNONCE string2DEVNONCE(const std::string &value);
 MTYPE string2mtype(const std::string &value);
+std::string mtype2string(MTYPE value);
+MHDR string2mhdr(const std::string &value);
+std::string mhdr2string(MHDR value);
+std::string fctrl2string(const RFM_HEADER*);
+std::string mac2string(void *value, uint8_t foptSize, size_t bufferSize);
+std::string rfm_header2string(const RFM_HEADER* value);
 ACTIVATION string2activation(const std::string &value);
 ACTIVATION pchar2activation(const char *value);
 MODULATION string2MODULATION(const char *value);

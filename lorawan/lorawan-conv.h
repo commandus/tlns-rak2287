@@ -50,6 +50,22 @@
 
 bool isDEVADDREmpty(const DEVADDR &addr);
 bool isDEVEUIEmpty(const DEVEUI &eui);
+/**
+ * Return 0..255 port number, -1 if not
+ * @param value RFM
+ * @param size data size
+ * @return 0..255 port number, -1 if not
+ */
+int hasFPort(const void *value, size_t size);
+uint8_t getFPort(const void *value);
+
+/**
+ * Return pointer to the payload or NULL if no payload,
+ * @param value buffer
+ * @param size buffer size
+ * @return pointer to the payload or NULL if no payload,
+ */
+char* hasPayload(const void *value, size_t size);
 
 uint32_t DEVADDR2int(const DEVADDR &value);
 void int2DEVADDR(DEVADDR &retval, uint32_t value);

@@ -46,6 +46,13 @@ NETID::NETID(
 }
 
 NETID::NETID(
+    uint32_t value
+)
+{
+    int2NETID(*this, value);
+}
+
+NETID::NETID(
     uint8_t netType,
     uint32_t value
 )

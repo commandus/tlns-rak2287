@@ -8,10 +8,12 @@
 #include <iomanip>
 
 #include "lorawan-gateway-listener.h"
+#include "lorawan/lorawan-types.h"
 #include "lorawan/lorawan-error.h"
 #include "lorawan/lorawan-msg.h"
 #include "schedule-item-concentrator.h"
 #include "lorawan/lorawan-string.h"
+#include "lorawan/lorawan-conv.h"
 
 // max number of packets per fetch/send cycle
 #define PACKETS_MAX_SIZE            255
@@ -25,7 +27,25 @@ void print_header_lgw_pkt_rx_s(
     std::ostream &strm
 )
 {
-    strm << "frequency, offs, IF, stat, counter, RF, id, M, B, DR, CR, RSSI ch, RSSI sig, SNR avg, SNR min, SNR max, CRC, size, payload, rcvd, time";
+    strm << "frequency, offs, IF, stat, counter, RF, id, M, B, DR, CR, RSSI ch, RSSI sig, SNR avg, SNR min, SNR max, CRC, size, rcvd, time, payload, ";
+}
+
+static void printPayload(
+    std::ostream &strm,
+    char *payload,
+    size_t size
+)
+{
+    RFM_HEADER *rfm = (RFM_HEADER *) payload;
+    strm << rfm_header2string(rfm) << DLMT
+         << mac2string((void *) (payload + SIZE_RFM_HEADER), rfm->fctrl.f.foptslen, size - SIZE_RFM_HEADER);
+    if (hasFPort((void *) payload, size)) {
+        strm << DLMT << (int) getFPort((void *) payload);
+        char *pl = hasPayload((void *) payload, size);
+        if (pl) {
+            strm << DLMT << hexString(pl, size - (pl - (char *) rfm));
+        }
+    }
 }
 
 void print_lgw_pkt_rx_s(
@@ -55,9 +75,10 @@ void print_lgw_pkt_rx_s(
         << value->crc << DLMT                           // CRC that was received in the payload
         << std::dec
         << value->size << DLMT                          // payload size in bytes
-        << hexString(&value->payload, value->size) << DLMT   // buffer containing the payload
-        << value->ftime_received << DLMT // a fine timestamp has been received
-        << value->ftime;          // packet fine timestamp (nanoseconds since last PPS)
+        << value->ftime_received << DLMT                // a fine timestamp has been received
+        << value->ftime << DLMT                         // packet fine timestamp (nanoseconds since last PPS)
+        << hexString(&value->payload, value->size) << DLMT;   // buffer containing the payload
+    printPayload(strm, (char *)&value->payload, value->size);
 }
 
 TransmitQueue::TransmitQueue()

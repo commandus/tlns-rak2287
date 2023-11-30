@@ -35,6 +35,7 @@ public:
 	};
     NETID();
     NETID(const NETID &value);
+    NETID(uint32_t value);
     NETID(uint8_t netType, uint32_t value);
     uint8_t getType() const;
     void get(NETID &retval)  const;
@@ -60,13 +61,14 @@ public:
     size_t size();
 };
 
-
 typedef PACK(struct {
     uint8_t v0;
     uint8_t v1;
     uint8_t v2: 5;
     uint8_t networkType: 3;	// MSB network type 0..7
 } ) NETID_TYPE;		// 3 bytes
+
+#define SIZE_NETID_TYPE 3
 
 // typedef unsigned char DEVADDR[4];
 
@@ -149,6 +151,8 @@ public:
     size_t size();
 };	// 4 bytes
 
+#define SIZE_DEVADDR 4
+
 // typedef unsigned char KEY128[16];
 class KEY128 {
 public:
@@ -169,6 +173,8 @@ public:
     bool operator>(const KEY128 &rhs) const;
     bool operator!=(const KEY128 &rhs) const;
 };   // 16 bytes
+
+#define SIZE_KEY128 16
 
 /*
 typedef unsigned char DEVEUI[8];
@@ -191,6 +197,8 @@ public:
 	bool operator!=(const DEVEUI &rhs) const;
 };
 
+#define SIZE_DEVEUI 9
+
 // typedef unsigned char JOINNONCE[3];
 class JOINNONCE {
 public:
@@ -201,6 +209,8 @@ public:
     explicit JOINNONCE(const std::string &hex);
     explicit JOINNONCE(uint32_t value);
 };
+
+#define SIZE_JOINNONCE 3
 
 // typedef uint16_t DEVNONCE;
 class DEVNONCE {
@@ -214,6 +224,8 @@ public:
     explicit DEVNONCE(uint16_t value);
 };
 
+#define SIZE_DEVNONCE 2
+
 // typedef unsigned char APPNONCE[3];
 class APPNONCE {
 public:
@@ -225,6 +237,8 @@ public:
     explicit APPNONCE(uint32_t value);
 };
 
+#define SIZE_APPNONCE 3
+
 typedef uint8_t FREQUENCY[3];
 
 class DEVICENAME {
@@ -235,6 +249,8 @@ public:
     explicit DEVICENAME(const char *value);
     std::string toString() const;
 };
+
+#define SIZE_DEVICENAME 8
 
 enum ERR_CODE_TX {
 	JIT_TX_OK = 0,                 	// Packet ok to be sent
@@ -298,10 +314,9 @@ typedef PACK( struct {
 	uint16_t token;				// random token
 	uint8_t tag;				// PUSH_DATA 0x00 PULL_DATA 0x02
 	DEVEUI mac;					// 4-11	Gateway unique identifier (MAC address). For example : 00:0c:29:19:b2:37
-} ) SEMTECH_PREFIX_GW;	    // 12 bytes
-// After prefix "JSON object", starting with {, ending with }, see section 4
+} ) SEMTECH_PREFIX_GW;	        // 12 bytes
 
-// After prefix "JSON object", starting with {, ending with }, see section 4
+#define SIZE_SEMTECH_PREFIX_GW 12
 
 /**
  * PUSH_ACK packet
@@ -311,7 +326,9 @@ typedef PACK( struct {
 	uint8_t version;			// protocol version = 2
 	uint16_t token;				// same random token as SEMTECH_PREFIX_GW
 	uint8_t tag;				// PUSH_ACK 1 PULL_ACK 4
-} ) SEMTECH_ACK;			// 4 bytes
+} ) SEMTECH_ACK;			    // 4 bytes
+
+#define SIZE_SEMTECH_ACK 4
 
 /**
  * 
@@ -350,19 +367,20 @@ typedef PACK( struct {
 	union {
 		uint8_t i;
 		struct {
-			uint8_t major: 2;
-			uint8_t rfu: 3;
-			uint8_t mtype: 3;
+			uint8_t major: 2;   ///< always 0
+			uint8_t rfu: 3;     ///< reserved
+			uint8_t mtype: 3;   ///< enum MTYPE
 		} f;
 	};
 } ) MHDR;			// 1 byte
 
+#define SIZE_MHDR 1
 /**
  * MHDR + FHDR
  */ 
 typedef PACK( struct {
 	// MAC header byte: message type, RFU, Major
-	MHDR macheader;			// 0x40 unconfirmed uplink
+	MHDR macheader;			    // 0x40 unconfirmed uplink
 	// Frame header (FHDR)
 	DEVADDR devaddr;			// MAC address
 	union {
@@ -388,11 +406,15 @@ typedef PACK( struct {
 	// FOpts 0..15
 } ) RFM_HEADER;			// 8 bytes, +1
 
+#define SIZE_RFM_HEADER 8
+
  typedef PACK( struct {
 	DEVEUI joinEUI;			    // JoinEUI
 	DEVEUI devEUI;			    // DevEUI
 	DEVNONCE devNonce;
 } ) JOIN_REQUEST_FRAME;	// 8 + 8 + 2 = 18 bytes
+
+#define SIZE_JOIN_REQUEST_FRAME 18
 
 typedef PACK( struct {
     MHDR mhdr;  			    // 0x00 Join request. MAC header byte: message type, RFU, Major
@@ -400,12 +422,15 @@ typedef PACK( struct {
     uint32_t mic;			    // MIC
 } ) JOIN_REQUEST_HEADER;	// 1 + 18 + 4 = 23 bytes
 
+#define SIZE_JOIN_REQUEST_HEADER 23
+
 typedef PACK( struct {
     uint8_t RX2DataRate: 4;	    ///< downlink data rate that serves to communicate with the end-device on the second receive window (RX2)
     uint8_t RX1DROffset: 3;	    ///< offset between the uplink data rate and the downlink data rate used to communicate with the end-device on the first receive window (RX1)
     uint8_t optNeg: 1;     	    ///< 1.0- RFU, 1.1- optNeg
 } ) DLSETTINGS;	        // 1 byte
 
+#define SIZE_DLSETTINGS 1
 /**
  * Join-Accept
   NetID DevAddr DLSettings RXDelay CFList
@@ -418,17 +443,23 @@ typedef PACK( struct {
     uint8_t rxDelay;                //
 } ) JOIN_ACCEPT_FRAME_HEADER;	    // 3 3 4 1 1 = 12 bytes
 
+#define SIZE_JOIN_ACCEPT_FRAME_HEADER 12
+
 typedef PACK( struct {
     MHDR mhdr;  			        // 0x00 Join request. MAC header byte: message type, RFU, Major
     JOIN_ACCEPT_FRAME_HEADER hdr;   //
     uint32_t mic;			        // MIC
-} ) JOIN_ACCEPT_FRAME;	        // 1 12 4 = 17 bytes
+} ) JOIN_ACCEPT_FRAME;	            // 1 12 4 = 17 bytes
+
+#define SIZE_JOIN_ACCEPT_FRAME 17
 
 // Channel frequency list
 typedef PACK( struct {
     FREQUENCY frequency[5];	        // frequency, 100 * Hz ch 4..8
     uint8_t cflisttype;		        // always 0
-} ) CFLIST;			        // 16 bytes
+} ) CFLIST;			                // 16 bytes
+
+#define SIZE_CFLIST 16
 
 typedef PACK( struct {
     MHDR mhdr;  			        // 0x00 Join request. MAC header byte: message type, RFU, Major
@@ -436,6 +467,8 @@ typedef PACK( struct {
     CFLIST cflist;
     uint32_t mic;			        // MIC
 } ) JOIN_ACCEPT_FRAME_CFLIST;	// 1 12 16 4 = 33 bytes
+
+#define SIZE_JOIN_ACCEPT_FRAME_CFLIST 33
 
 typedef PACK( struct {
 	uint8_t fopts[15];
@@ -467,12 +500,16 @@ public:
     LORAWAN_VERSION(uint8_t value);
 };	// 1 byte
 
+#define SIZE_LORAWAN_VERSION 1
+
 // Regional paramaters version e.g. RP002-1.0.0, RP002-1.0.1
 typedef PACK( struct {
     uint8_t major: 2;		// always 1
     uint8_t minor: 2;		// 0 or 1
     uint8_t release: 4;		// no matter
 } ) REGIONAL_PARAMETERS_VERSION;	// 1 byte
+
+#define SIZE_REGIONAL_PARAMETERS_VERSION 1
 
 class NETWORKIDENTITY;
 class DEVICEID {
@@ -558,6 +595,8 @@ public:
     bool empty() const;
 };					// 44 bytes + 8 + 18 = 70
 
+#define SIZE_DEVICEID 70
+
 class NETWORKIDENTITY {
 public:
 	// key
@@ -574,5 +613,7 @@ public:
 	std::string toString() const;
     std::string toJsonString() const;
 };  // 95 bytes
+
+#define SIZE_NETWORKIDENTITY 96
 
 #endif

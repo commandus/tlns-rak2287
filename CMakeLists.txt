@@ -24,7 +24,7 @@ find_library(LIBLORAGW NAMES loragw HINTS
 set(SRC_MAIN
 	gw-rak2287.cpp lorawan-gateway-listener.cpp	scheduler.cpp schedule-item-concentrator.cpp
 	lorawan/lorawan-error.cpp lorawan/lorawan-msg.cpp lorawan/lorawan-date.cpp lorawan/lorawan-string.cpp
-	lorawan/lorawan-conv.cpp lorawan/lorawan-types.cpp
+	lorawan/lorawan-mac.cpp lorawan/lorawan-conv.cpp lorawan/lorawan-types.cpp
 	third-party/packet-forwarder/subst-call-c.cpp
 	third-party/packet-forwarder/libloragw-helper.cpp
 	third-party/strptime.cpp
@@ -44,5 +44,5 @@ INSTALL(FILES README.md LICENSE HISTORY COPYING TODO CODE_OF_CONDUCT.md CONTRIBU
 include(InstallRequiredSystemLibraries)
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 set(CPACK_PACKAGE_VERSION_MAJOR "1")
-set(CPACK_PACKAGE_VERSION_MINOR "1")
+set(CPACK_PACKAGE_VERSION_MINOR "0")
 include(CPack)

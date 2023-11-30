@@ -17,7 +17,7 @@ AM_CPPFLAGS = $(COMMON_C_FLAGS)
 nobase_dist_include_HEADERS = \
     config.h gateway-settings.h lorawan-gateway-listener.h \
     schedule-item-concentrator.h gateway-lora.h log-intf.h scheduler.h \
-    lorawan/lorawan-conv.h lorawan/lorawan-error.h lorawan/lorawan-msg.h \
+    lorawan/lorawan-mac.h lorawan/lorawan-conv.h lorawan/lorawan-error.h lorawan/lorawan-msg.h \
     lorawan/lorawan-types.h lorawan/lorawan-string.h lorawan/lorawan-const.h lorawan/lorawan-date.h \
     config/gateway_usb_conf.h \
     third-party/strptime.h \
@@ -36,7 +36,7 @@ tlns_rak2287_SOURCES =\
     lorawan-gateway-listener.cpp \
 	scheduler.cpp schedule-item-concentrator.cpp \
     lorawan/lorawan-error.cpp lorawan/lorawan-msg.cpp lorawan/lorawan-date.cpp lorawan/lorawan-string.cpp \
-    lorawan/lorawan-conv.cpp lorawan/lorawan-types.cpp \
+    lorawan/lorawan-mac.cpp lorawan/lorawan-conv.cpp lorawan/lorawan-types.cpp \
 	third-party/packet-forwarder/subst-call-c.cpp \
 	third-party/packet-forwarder/libloragw-helper.cpp \
 	third-party/strptime.cpp \

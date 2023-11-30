@@ -10,6 +10,37 @@ bool isDEVEUIEmpty(const DEVEUI &eui)
     return *((uint64_t *) &eui) == 0;
 }
 
+int hasFPort(
+    const void *value,
+    size_t size
+)
+{
+    if (!value || size <= SIZE_RFM_HEADER)
+        return -1;
+    if (size < SIZE_RFM_HEADER + ((const RFM_HEADER*) value)->fctrl.f.foptslen)
+        return -1;
+    return ((uint8_t*) value)[SIZE_RFM_HEADER + ((const RFM_HEADER*) value)->fctrl.f.foptslen];
+}
+
+char* hasPayload(
+    const void *value,
+    size_t size
+)
+{
+    if (!value || size <= SIZE_RFM_HEADER)
+        return nullptr;
+    if (size > SIZE_RFM_HEADER + ((const RFM_HEADER*) value)->fctrl.f.foptslen + 1)
+        return ((char *) value) + SIZE_RFM_HEADER + ((const RFM_HEADER*) value)->fctrl.f.foptslen + 1;
+    return nullptr;
+}
+
+uint8_t getFPort(
+    const void *value
+)
+{
+    return ((uint8_t*) value)[SIZE_RFM_HEADER + ((const RFM_HEADER*) value)->fctrl.f.foptslen];
+}
+
 uint32_t DEVADDR2int(
 	const DEVADDR &value
 )
